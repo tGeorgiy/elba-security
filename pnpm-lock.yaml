@@ -161,7 +161,7 @@ importers:
         version: 2.30.0
       drizzle-orm:
         specifier: ^0.29.4
-        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
+        version: 0.29.4(@neondatabase/serverless@0.9.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
       dropbox:
         specifier: ^10.34.0
         version: 10.34.0(@types/node-fetch@2.6.11)
@@ -264,7 +264,7 @@ importers:
         version: 7.93.0(next@14.0.1)(react@18.2.0)
       drizzle-orm:
         specifier: ^0.29.4
-        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
+        version: 0.29.4(@neondatabase/serverless@0.9.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
       inngest:
         specifier: 3.14.2
         version: 3.14.2(typescript@5.2.2)
@@ -373,7 +373,7 @@ importers:
         version: 0.7.1(typescript@5.2.2)(zod@3.22.4)
       drizzle-orm:
         specifier: ^0.29.4
-        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
+        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(postgres@3.4.3)(react@18.2.0)
       google-auth-library:
         specifier: ^9.6.3
         version: 9.6.3
@@ -591,7 +591,7 @@ importers:
         version: 3.3.1
       drizzle-orm:
         specifier: ^0.29.1
-        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
+        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.79)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
       inngest:
         specifier: 3.12.0
         version: 3.12.0(typescript@5.2.2)
@@ -634,10 +634,10 @@ importers:
         version: 20.11.16
       '@types/react':
         specifier: ^18
-        version: 18.2.47
+        version: 18.2.79
       '@types/react-dom':
         specifier: ^18
-        version: 18.2.18
+        version: 18.2.25
       dotenv:
         specifier: ^16.3.1
         version: 16.3.1
@@ -1010,7 +1010,7 @@ importers:
         version: link:../sdk
       drizzle-orm:
         specifier: '>=0.29.0'
-        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
+        version: 0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.79)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0)
       msw:
         specifier: '>=2.0.0'
         version: 2.0.6(typescript@5.2.2)
@@ -2896,7 +2896,6 @@ packages:
     dependencies:
       '@types/prop-types': 15.7.11
       csstype: 3.1.3
-    dev: true
 
   /@types/retry@0.12.0:
     resolution: {integrity: sha512-wWKOClTTiizcZhXnPY4wikVAwmdYHp8q6DmC+EJUzAMsycb7HB32Kh9RN4+0gExjmPmZSAQjgURXIGATPegAvA==}
@@ -4507,7 +4506,7 @@ packages:
       - supports-color
     dev: true
 
-  /drizzle-orm@0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0):
+  /drizzle-orm@0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.47)(postgres@3.4.3)(react@18.2.0):
     resolution: {integrity: sha512-ZnSM8TAxFhzH7p1s3+w3pRE/eKaOeNkH9SKitm717pubDVVcV2I0BCDBPGKV+pe02+wMfw37ntlTcCyo2rA3IA==}
     peerDependencies:
       '@aws-sdk/client-rds-data': '>=3'
@@ -4580,6 +4579,83 @@ packages:
     dependencies:
       '@neondatabase/serverless': 0.6.0
       '@types/react': 18.2.47
+      postgres: 3.4.3
+      react: 18.2.0
+    dev: false
+
+  /drizzle-orm@0.29.4(@neondatabase/serverless@0.6.0)(@types/react@18.2.79)(@vercel/postgres@0.5.1)(postgres@3.4.3)(react@18.2.0):
+    resolution: {integrity: sha512-ZnSM8TAxFhzH7p1s3+w3pRE/eKaOeNkH9SKitm717pubDVVcV2I0BCDBPGKV+pe02+wMfw37ntlTcCyo2rA3IA==}
+    peerDependencies:
+      '@aws-sdk/client-rds-data': '>=3'
+      '@cloudflare/workers-types': '>=3'
+      '@libsql/client': '*'
+      '@neondatabase/serverless': '>=0.1'
+      '@opentelemetry/api': ^1.4.1
+      '@planetscale/database': '>=1'
+      '@types/better-sqlite3': '*'
+      '@types/pg': '*'
+      '@types/react': '>=18'
+      '@types/sql.js': '*'
+      '@vercel/postgres': '*'
+      better-sqlite3: '>=7'
+      bun-types: '*'
+      expo-sqlite: '>=13.2.0'
+      knex: '*'
+      kysely: '*'
+      mysql2: '>=2'
+      pg: '>=8'
+      postgres: '>=3'
+      react: '>=18'
+      sql.js: '>=1'
+      sqlite3: '>=5'
+    peerDependenciesMeta:
+      '@aws-sdk/client-rds-data':
+        optional: true
+      '@cloudflare/workers-types':
+        optional: true
+      '@libsql/client':
+        optional: true
+      '@neondatabase/serverless':
+        optional: true
+      '@opentelemetry/api':
+        optional: true
+      '@planetscale/database':
+        optional: true
+      '@types/better-sqlite3':
+        optional: true
+      '@types/pg':
+        optional: true
+      '@types/react':
+        optional: true
+      '@types/sql.js':
+        optional: true
+      '@vercel/postgres':
+        optional: true
+      better-sqlite3:
+        optional: true
+      bun-types:
+        optional: true
+      expo-sqlite:
+        optional: true
+      knex:
+        optional: true
+      kysely:
+        optional: true
+      mysql2:
+        optional: true
+      pg:
+        optional: true
+      postgres:
+        optional: true
+      react:
+        optional: true
+      sql.js:
+        optional: true
+      sqlite3:
+        optional: true
+    dependencies:
+      '@neondatabase/serverless': 0.6.0
+      '@types/react': 18.2.79
       '@vercel/postgres': 0.5.1
       postgres: 3.4.3
       react: 18.2.0
