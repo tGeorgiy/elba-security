@@ -56,7 +56,6 @@ describe('refresh-token', () => {
 
   test('should update encrypted token and schedule the next refresh', async () => {
     await db.insert(organisationsTable).values(organisation);
-
     vi.spyOn(authConnector, 'getToken').mockResolvedValue({
       token: newToken,
       expiresIn,
