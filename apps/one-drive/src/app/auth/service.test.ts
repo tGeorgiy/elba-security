@@ -75,11 +75,11 @@ describe('setupOrganisation', () => {
         },
       },
       {
-        name: 'one-drive/token.refresh.triggered',
+        name: 'one-drive/token.refresh.requested',
         data: {
           organisationId: organisation.id,
+          expiresAt: now.getTime() + expiresIn * 1000,
         },
-        ts: now.getTime() + expiresIn * 1000 - 5 * 60 * 1000,
       },
     ]);
   });
@@ -131,11 +131,11 @@ describe('setupOrganisation', () => {
         },
       },
       {
-        name: 'one-drive/token.refresh.triggered',
+        name: 'one-drive/token.refresh.requested',
         data: {
           organisationId: organisation.id,
+          expiresAt: now.getTime() + expiresIn * 1000,
         },
-        ts: now.getTime() + expiresIn * 1000 - 5 * 60 * 1000,
       },
     ]);
   });
