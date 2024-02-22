@@ -25,9 +25,10 @@ export const inngest = new Inngest({
         organisationId: string;
       };
     };
-    'one-drive/token.refresh.triggered': {
+    'one-drive/token.refresh.requested': {
       data: {
         organisationId: string;
+        expiresAt: number;
       };
     };
   }>(),
