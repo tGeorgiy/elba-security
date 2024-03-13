@@ -31,6 +31,36 @@ export const inngest = new Inngest({
         expiresAt: number;
       };
     };
+    'one-drive/data_protection.sync.requested': {
+      data: {
+        organisationId: string;
+        syncStartedAt: number;
+        isFirstSync: boolean;
+        skipToken: string | null;
+      };
+    };
+    'one-drive/drives.sync.triggered': {
+      data: {
+        token: string;
+        siteId: string;
+        organisationId: string;
+        organisationRegion: string;
+        isFirstSync: boolean;
+        skipToken: string | null;
+      };
+    };
+    'one-drive/items.sync.triggered': {
+      data: {
+        token: string;
+        siteId: string;
+        driveId: string;
+        organisationId: string;
+        organisationRegion: string;
+        isFirstSync: boolean;
+        folderId: string | null;
+        skipToken: string | null;
+      };
+    };
   }>(),
   middleware: [rateLimitMiddleware, unauthorizedMiddleware, sentryMiddleware],
   logger,
