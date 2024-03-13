@@ -23,6 +23,8 @@ export const env = z
       .default('https://login.microsoftonline.com/organizations/adminconsent'),
     MICROSOFT_API_URL: z.string().url().default('https://graph.microsoft.com/v1.0'),
     MICROSOFT_AUTH_API_URL: z.string().url().default('https://login.microsoftonline.com'),
+    MICROSOFT_CHUNK_SIZE: z.coerce.number().int().positive().min(1).default(20),
+    ID_SEPARATOR: z.string().default('-SEPARATOR-'),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),
     ELBA_REDIRECT_URL: z.string().url(),
@@ -36,6 +38,7 @@ export const env = z
     TOKEN_REFRESH_MAX_RETRY: zEnvRetry(),
     USERS_SYNC_CRON: z.string().default('0 0 * * *'),
     USERS_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(100),
+    SITES_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(100),
     USERS_SYNC_MAX_RETRY: zEnvRetry(),
     VERCEL_ENV: z.string().min(1).optional(),
   })
