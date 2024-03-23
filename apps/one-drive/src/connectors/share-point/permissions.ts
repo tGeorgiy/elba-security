@@ -1,3 +1,4 @@
+import { logger } from '@elba-security/logger';
 import { z } from 'zod';
 import { env } from '@/env';
 import { MicrosoftError } from '../../common/error';
@@ -75,99 +76,82 @@ import { getNextSkipTokenFromNextLink } from '../../common/pagination';
 // }
 
 const grantedUserSchema = z.object({
-  '@odata.type': z.string().optional(),
-  displayName: z.string().optional(),
-  id: z.string().optional(),
-  email: z.string().optional(),
+  displayName: z.string(),
+  id: z.string(),
+  email: z.string(),
 });
 
-const permissionsSchema = z.object({
+const grantedToV2Schema = z.object({
+  user: grantedUserSchema,
+});
+
+const grantedToIdentitiesV2Schema = z
+  .array(
+    z.object({
+      user: grantedUserSchema.optional(),
+    })
+  )
+  .transform((val, ctx) => {
+    const filtered = val.filter((el) => Object.keys(el).length);
+
+    if (!filtered.length) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'No user permissions in array',
+      });
+
+      return z.NEVER;
+    }
+
+    return filtered;
+  });
+
+const basePSchema = z.object({
   id: z.string(),
   roles: z.array(z.string()),
-  shareId: z.string().optional(),
-  hasPassword: z.boolean().optional(),
-  grantedToV2: z
-    .object({
-      siteGroup: z
-        .object({
-          displayName: z.string().optional(),
-          id: z.string().optional(),
-          loginName: z.string().optional(),
-        })
-        .optional(),
-      user: grantedUserSchema.optional(),
-      siteUser: z
-        .object({
-          displayName: z.string().optional(),
-          loginName: z.string().optional(),
-          id: z.string().optional(),
-          email: z.string().optional(),
-        })
-        .optional(),
-      group: z
-        .object({
-          '@odata.type': z.string().optional(),
-          displayName: z.string().optional(),
-          id: z.string().optional(),
-          email: z.string().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  grantedTo: z
-    .object({
-      user: z
-        .object({
-          displayName: z.string().optional(),
-          email: z.string().optional(),
-          id: z.string().optional(),
-        })
-        .optional(),
-    })
-    .optional(),
-  grantedToIdentitiesV2: z
-    .array(
-      z
-        .object({
-          user: grantedUserSchema.optional(),
-          siteUser: z
-            .object({
-              displayName: z.string().optional(),
-              loginName: z.string().optional(),
-              id: z.string().optional(),
-              email: z.string().optional(),
-            })
-            .optional(),
-        })
-        .optional()
-    )
-    .optional(),
-  grantedToIdentities: z
-    .array(
-      z
-        .object({
-          user: z
-            .object({
-              displayName: z.string().optional(),
-              id: z.string().optional(),
-              email: z.string().optional(),
-            })
-            .optional(),
-        })
-        .optional()
-    )
-    .optional(),
   link: z
     .object({
       scope: z.string().optional(),
-      type: z.string().optional(),
-      webUrl: z.string().optional(),
-      preventsDownload: z.boolean().optional(),
     })
     .optional(),
+  grantedToV2: grantedToV2Schema.optional(),
+  grantedToIdentitiesV2: grantedToIdentitiesV2Schema.optional(),
 });
 
-export type MicrosoftDriveItemPermissions = z.infer<typeof permissionsSchema>;
+export const validateAndParsePermission = (
+  data: z.infer<typeof basePSchema>
+):
+  | (Omit<z.infer<typeof basePSchema>, 'grantedToV2'> & {
+      grantedToV2: z.infer<typeof grantedToV2Schema>;
+    })
+  | (Omit<z.infer<typeof basePSchema>, 'grantedToIdentitiesV2'> & {
+      grantedToIdentitiesV2: z.infer<typeof grantedToIdentitiesV2Schema>;
+    })
+  | null => {
+  const result = basePSchema.safeParse(data);
+
+  if (result.success) {
+    const grantedToV2ParseResult = grantedToV2Schema.safeParse(result.data.grantedToV2);
+    const grantedToIdentitiesV2ParseResult = grantedToIdentitiesV2Schema.safeParse(
+      result.data.grantedToIdentitiesV2
+    );
+    if (grantedToV2ParseResult.success) {
+      return {
+        ...result.data,
+        grantedToV2: grantedToV2ParseResult.data,
+      };
+    } else if (grantedToIdentitiesV2ParseResult.success) {
+      return {
+        ...result.data,
+        grantedToIdentitiesV2: grantedToIdentitiesV2ParseResult.data,
+      };
+    }
+    logger.warn('Retrieved permission is invalid, or empty permissions array', result);
+  }
+  return null;
+};
+
+export type MicrosoftDriveItemPermissions = z.infer<typeof basePSchema>;
 
 export type DriveUserSchema = z.infer<typeof grantedUserSchema>;
 
@@ -190,7 +174,7 @@ export const getItemPermissions = async ({
     `${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/items/${itemId}/permissions`
   );
 
-  url.searchParams.append('$top', String(env.SITES_SYNC_BATCH_SIZE));
+  url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_SYNC_CHUNK_SIZE));
 
   if (skipToken) {
     url.searchParams.append('$skiptoken', skipToken);
@@ -209,8 +193,8 @@ export const getItemPermissions = async ({
   const data = (await response.json()) as MicrosoftPaginatedResponse<MicrosoftDriveItemPermissions>;
 
   const nextSkipToken = getNextSkipTokenFromNextLink(data['@odata.nextLink']);
-
   const permissions = data.value;
+
   if (nextSkipToken) {
     const nextData = await getItemPermissions({
       token,
@@ -223,5 +207,12 @@ export const getItemPermissions = async ({
     permissions.push(...nextData.permissions);
   }
 
-  return { permissions, nextSkipToken };
+  const parsedPermissions = permissions.reduce<MicrosoftDriveItemPermissions[]>((acc, el) => {
+    const parsedPermission = validateAndParsePermission(el);
+    if (parsedPermission !== null) acc.push(parsedPermission);
+
+    return acc;
+  }, []);
+
+  return { permissions: parsedPermissions, nextSkipToken };
 };

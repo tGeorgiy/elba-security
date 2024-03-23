@@ -1,11 +1,14 @@
-import { expect, test, describe, vi } from 'vitest';
+import { beforeEach, expect, test, describe, vi } from 'vitest';
 import { createInngestFunctionMock, spyOnElba } from '@elba-security/test-utils';
+import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
 import * as itemsConnector from '@/connectors/share-point/items';
 import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
 import * as permissionsConnector from '@/connectors/share-point/permissions';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
 import { encrypt } from '@/common/crypto';
+import { organisationsTable } from '@/database/schema';
+import { db } from '@/database/client';
 import { syncItems, parseItems, parseDataProtetionItems } from './sync-items';
 import type { ItemsWithPermisions } from './sync-items';
 
@@ -37,45 +40,83 @@ const createTempData = (title: string, i: number): MicrosoftDriveItem => ({
   },
 });
 
-const items: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) =>
+const itemItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) =>
   createTempData('item', i)
 );
 
-const folders: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) => ({
+const folderItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) => ({
   ...createTempData('folder', i),
   folder: { childCount: i },
 }));
 
-const groupedItems: MicrosoftDriveItem[] = [...folders, ...items];
+const groupedItems: MicrosoftDriveItem[] = [...folderItems, ...itemItems];
 
-const permissions: MicrosoftDriveItemPermissions[] = Array.from({ length: itemsCount }, (_, i) => ({
-  id: `permission-id-${i}`,
-  roles: ['write'],
-  link: { scope: 'users' },
-  grantedToV2: {
-    user: {
-      displayName: `some-display-name-${i}`,
-      id: `some-user-id-${i}`,
-      email: `some-user-email-${i}`,
-    },
-  },
-  grantedToIdentitiesV2: [
-    {
+const permissions: MicrosoftDriveItemPermissions[] = Array.from(
+  { length: itemsCount * 2 },
+  (_, i) => ({
+    id: `permission-id-${i}`,
+    roles: ['write'],
+    link: { scope: 'users' },
+    grantedToV2: {
       user: {
         displayName: `some-display-name-${i}`,
         id: `some-user-id-${i}`,
         email: `some-user-email-${i}`,
       },
     },
-  ],
-}));
+    grantedToIdentitiesV2: [
+      {
+        user: {
+          displayName: `some-display-name-${i}`,
+          id: `some-user-id-${i}`,
+          email: `some-user-email-${i}`,
+        },
+      },
+    ],
+  })
+);
+
+const setupData = {
+  siteId,
+  driveId,
+  isFirstSync,
+  folderId,
+  skipToken: null,
+  organisationId: organisation.id,
+};
 
 const setup = createInngestFunctionMock(syncItems, 'one-drive/items.sync.triggered');
 
-describe('sync-drives', () => {
+describe('sync-items', () => {
+  beforeEach(async () => {
+    await db.insert(organisationsTable).values(organisation);
+  });
+
+  test('should abort sync when organisation is not registered', async () => {
+    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
+      nextSkipToken: null,
+      items: groupedItems,
+    });
+
+    const [result, { step }] = setup({
+      ...setupData,
+      organisationId: '15a76301-f1dd-4a77-b12a-9d7d3fca3c92', // fake id
+    });
+
+    await expect(result).rejects.toBeInstanceOf(NonRetriableError);
+
+    expect(itemsConnector.getItems).toBeCalledTimes(0);
+
+    expect(step.waitForEvent).toBeCalledTimes(0);
+
+    expect(step.sendEvent).toBeCalledTimes(0);
+  });
+
   test('should continue the sync when there is a next page', async () => {
     const nextSkipToken = 'next-skip-token';
     const skipToken = null;
+    const defaultEventsCount = 1;
+    const elba = spyOnElba();
 
     vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
       items: groupedItems,
@@ -86,66 +127,13 @@ describe('sync-drives', () => {
       nextSkipToken: skipToken,
     });
 
-    const [result] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
+    const [result, { step }] = setup(setupData);
 
     await expect(result).resolves.toStrictEqual({ status: 'ongoing' });
-  });
 
-  test('should finalize the sync when there is a no next page', async () => {
-    const skipToken = null;
+    expect(step.run).toBeCalledTimes(3);
 
-    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
-      items: groupedItems,
-      nextSkipToken: skipToken,
-    });
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
-      permissions,
-      nextSkipToken: null,
-    });
-
-    const [result] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
-
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
-  });
-
-  test('should get items', async () => {
-    const nextSkipToken = 'next-skip-token';
-    const skipToken = null;
-
-    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
-      items: groupedItems,
-      nextSkipToken,
-    });
-
-    const [_, { step }] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
-
+    expect(itemsConnector.getItems).toBeCalledTimes(1);
     expect(itemsConnector.getItems).toBeCalledWith({
       token,
       siteId,
@@ -154,146 +142,61 @@ describe('sync-drives', () => {
       skipToken,
     });
 
-    expect(itemsConnector.getItems).toBeCalledTimes(1);
+    const { folders, items } = parseItems(groupedItems);
 
-    await expect(
-      itemsConnector.getItems({
-        token,
-        siteId,
-        driveId,
-        folderId,
-        skipToken,
-      })
-    ).resolves.toStrictEqual({
-      items: groupedItems,
-      nextSkipToken,
-    });
-
-    expect(step.run).toBeCalledTimes(1);
-  });
-
-  test('should send "one-drive/items.sync.triggered" if folders found', async () => {
-    const nextSkipToken = 'next-skip-token';
-    const skipToken = null;
-
-    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
-      items: groupedItems,
-      nextSkipToken,
-    });
-
-    const [_, { step }] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
-
-    await expect(
-      itemsConnector.getItems({
-        token,
-        siteId,
-        driveId,
-        folderId,
-        skipToken,
-      })
-    ).resolves.toStrictEqual({
-      items: groupedItems,
-      nextSkipToken,
-    });
-
-    const parsedResult = parseItems(groupedItems);
-
-    if (parsedResult.folders.length) {
-      for (let i = 0; i < folders.length; i++) {
-        expect(step.sendEvent).nthCalledWith(i + 1, 'one-drive-sync-items', {
+    if (folders.length) {
+      expect(step.sendEvent).toBeCalledTimes(defaultEventsCount + 1);
+      expect(step.sendEvent).toBeCalledWith(
+        'items.sync.triggered',
+        folders.map(({ id }) => ({
           name: 'one-drive/items.sync.triggered',
           data: {
-            token,
             siteId,
             driveId,
             isFirstSync,
-            folderId: folders[i]?.id,
+            folderId: id,
             skipToken: null,
             organisationId: organisation.id,
-            organisationRegion: organisation.region,
           },
+        }))
+      );
+
+      expect(step.waitForEvent).toBeCalledTimes(folders.length);
+
+      for (let i = 0; i < folders.length; i++) {
+        const folder = folders[i];
+
+        expect(step.waitForEvent).nthCalledWith(i + 1, `wait-for-folders-complete-${folder?.id}`, {
+          event: 'one-drive/foder-items.sync.completed',
+          if: `async.data.organisationId == '${organisation.id}' && async.data.folderId == '${folder?.id}'`,
+          timeout: '1d',
         });
       }
-
-      expect(step.sendEvent).toBeCalledTimes(parsedResult.folders.length);
-    }
-
-    expect(step.run).toBeCalledTimes(1);
-  });
-
-  test('should get items permissions', async () => {
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
-      permissions,
-      nextSkipToken: null,
-    });
-
-    const [result] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken: null,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
-
-    await result;
-
-    for (let i = 0; i < groupedItems.length; i++) {
-      expect(permissionsConnector.getItemPermissions).nthCalledWith(i + 1, {
-        token,
-        siteId,
-        driveId,
-        itemId: groupedItems[i]?.id,
-        skipToken: null,
-      });
-
-      expect(permissionsConnector.getItemPermissions).nthReturnedWith;
     }
 
     expect(permissionsConnector.getItemPermissions).toBeCalledTimes(groupedItems.length);
-  });
 
-  test('should call elba.dataProtection.updateObjects', async () => {
-    const elba = spyOnElba();
+    for (const item of [...folders, ...items]) {
+      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+        token,
+        siteId,
+        driveId,
+        itemId: item.id,
+        skipToken: null,
+      });
+    }
 
-    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
-      items: groupedItems,
-      nextSkipToken: null,
-    });
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
-      permissions,
-      nextSkipToken: null,
-    });
-
-    const [result, { step }] = setup({
-      token,
-      siteId,
-      driveId,
-      isFirstSync,
-      folderId,
-      skipToken: null,
-      organisationId: organisation.id,
-      organisationRegion: organisation.region,
-    });
-
-    await result;
+    const itemsWithPermisionsResult = [...folders, ...items].map((item) => ({
+      item,
+      permissions: permissions.map((permission) =>
+        permissionsConnector.validateAndParsePermission(
+          permission as unknown as MicrosoftDriveItemPermissions
+        )
+      ),
+    }));
 
     const dataProtectionItems = parseDataProtetionItems(
-      groupedItems.map((item) => ({
-        item,
-        permissions,
-      })) as unknown as ItemsWithPermisions[]
+      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
     );
 
     expect(elba).toBeCalledTimes(1);
@@ -311,6 +214,209 @@ describe('sync-drives', () => {
       objects: dataProtectionItems,
     });
 
+    expect(step.sendEvent).toBeCalledWith('sync-next-items-page', {
+      name: 'one-drive/items.sync.triggered',
+      data: {
+        siteId,
+        driveId,
+        isFirstSync,
+        folderId,
+        skipToken: nextSkipToken,
+        organisationId: organisation.id,
+      },
+    });
+  });
+
+  test('should finalize the sync when there is a no next page', async () => {
+    const nextSkipToken = null;
+    const skipToken = 'skip-token';
+    const defaultEventsCount = 1;
+    const elba = spyOnElba();
+
+    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
+      items: groupedItems,
+      nextSkipToken,
+    });
+    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
+      permissions,
+      nextSkipToken: skipToken,
+    });
+
+    const [result, { step }] = setup({ ...setupData, skipToken });
+
+    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+
     expect(step.run).toBeCalledTimes(3);
+
+    expect(itemsConnector.getItems).toBeCalledTimes(1);
+    expect(itemsConnector.getItems).toBeCalledWith({
+      token,
+      siteId,
+      driveId,
+      folderId,
+      skipToken,
+    });
+
+    const { folders, items } = parseItems(groupedItems);
+
+    if (folders.length) {
+      expect(step.sendEvent).toBeCalledTimes(defaultEventsCount + 1);
+      expect(step.sendEvent).toBeCalledWith(
+        'items.sync.triggered',
+        folders.map(({ id }) => ({
+          name: 'one-drive/items.sync.triggered',
+          data: {
+            siteId,
+            driveId,
+            isFirstSync,
+            folderId: id,
+            skipToken: null,
+            organisationId: organisation.id,
+          },
+        }))
+      );
+
+      expect(step.waitForEvent).toBeCalledTimes(folders.length);
+
+      for (let i = 0; i < folders.length; i++) {
+        const folder = folders[i];
+
+        expect(step.waitForEvent).nthCalledWith(i + 1, `wait-for-folders-complete-${folder?.id}`, {
+          event: 'one-drive/foder-items.sync.completed',
+          if: `async.data.organisationId == '${organisation.id}' && async.data.folderId == '${folder?.id}'`,
+          timeout: '1d',
+        });
+      }
+    }
+
+    expect(permissionsConnector.getItemPermissions).toBeCalledTimes(groupedItems.length);
+
+    for (const item of [...folders, ...items]) {
+      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+        token,
+        siteId,
+        driveId,
+        itemId: item.id,
+        skipToken: null,
+      });
+    }
+
+    const itemsWithPermisionsResult = [...folders, ...items].map((item) => ({
+      item,
+      permissions: permissions.map((permission) =>
+        permissionsConnector.validateAndParsePermission(
+          permission as unknown as MicrosoftDriveItemPermissions
+        )
+      ),
+    }));
+
+    const dataProtectionItems = parseDataProtetionItems(
+      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
+    );
+
+    expect(elba).toBeCalledTimes(1);
+    expect(elba).toBeCalledWith({
+      organisationId: organisation.id,
+      region: organisation.region,
+      apiKey: env.ELBA_API_KEY,
+      baseUrl: env.ELBA_API_BASE_URL,
+    });
+
+    const elbaInstance = elba.mock.results[0]?.value;
+
+    expect(elbaInstance?.dataProtection.updateObjects).toBeCalledTimes(1);
+    expect(elbaInstance?.dataProtection.updateObjects).toBeCalledWith({
+      objects: dataProtectionItems,
+    });
+
+    expect(step.sendEvent).toBeCalledWith('folders-sync-complete', {
+      name: 'one-drive/foder-items.sync.completed',
+      data: {
+        organisationId: organisation.id,
+        folderId,
+      },
+    });
+  });
+
+  test('should call elba.dataProtection.updateObjects', async () => {
+    const nextSkipToken = null;
+    const skipToken = 'skip-token';
+    const elba = spyOnElba();
+
+    vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
+      items: itemItems,
+      nextSkipToken,
+    });
+    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
+      permissions,
+      nextSkipToken: skipToken,
+    });
+
+    const [result, { step }] = setup({ ...setupData, folderId: null, skipToken });
+
+    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+
+    expect(step.run).toBeCalledTimes(3);
+
+    expect(itemsConnector.getItems).toBeCalledTimes(1);
+    expect(itemsConnector.getItems).toBeCalledWith({
+      token,
+      siteId,
+      driveId,
+      folderId: null,
+      skipToken,
+    });
+
+    const { items } = parseItems(groupedItems);
+
+    expect(step.waitForEvent).toBeCalledTimes(0);
+
+    expect(permissionsConnector.getItemPermissions).toBeCalledTimes(items.length);
+
+    for (const item of [...items]) {
+      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+        token,
+        siteId,
+        driveId,
+        itemId: item.id,
+        skipToken: null,
+      });
+    }
+
+    const itemsWithPermisionsResult = [...items].map((item) => ({
+      item,
+      permissions: permissions.map((permission) =>
+        permissionsConnector.validateAndParsePermission(
+          permission as unknown as MicrosoftDriveItemPermissions
+        )
+      ),
+    }));
+
+    const dataProtectionItems = parseDataProtetionItems(
+      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
+    );
+
+    expect(elba).toBeCalledTimes(1);
+    expect(elba).toBeCalledWith({
+      organisationId: organisation.id,
+      region: organisation.region,
+      apiKey: env.ELBA_API_KEY,
+      baseUrl: env.ELBA_API_BASE_URL,
+    });
+
+    const elbaInstance = elba.mock.results[0]?.value;
+
+    expect(elbaInstance?.dataProtection.updateObjects).toBeCalledTimes(1);
+    expect(elbaInstance?.dataProtection.updateObjects).toBeCalledWith({
+      objects: dataProtectionItems,
+    });
+
+    expect(step.sendEvent).toBeCalledWith('items-sync-complete', {
+      name: 'one-drive/items.sync.completed',
+      data: {
+        organisationId: organisation.id,
+        driveId,
+      },
+    });
   });
 });

@@ -1,6 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { logger } from '@elba-security/logger';
+import { Elba } from '@elba-security/sdk';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
@@ -8,7 +9,7 @@ import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
 import { getSites } from '../../../connectors/share-point/sites';
 
-export const syncStart = inngest.createFunction(
+export const syncSites = inngest.createFunction(
   {
     id: 'synchronize-data-protection-objects',
     priority: {
@@ -28,7 +29,7 @@ export const syncStart = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.USERS_SYNC_MAX_RETRY,
+    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.sync.requested' },
   async ({ event, step }) => {
@@ -38,9 +39,7 @@ export const syncStart = inngest.createFunction(
 
     const [organisation] = await db
       .select({
-        id: organisationsTable.id,
         token: organisationsTable.token,
-        tenantId: organisationsTable.tenantId,
         region: organisationsTable.region,
       })
       .from(organisationsTable)
@@ -50,11 +49,9 @@ export const syncStart = inngest.createFunction(
       throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
     }
 
-    const token = await decrypt(organisation.token);
-
     const { sites, nextSkipToken } = await step.run('paginate', async () => {
       const result = await getSites({
-        token,
+        token: await decrypt(organisation.token),
         skipToken,
       });
 
@@ -62,21 +59,31 @@ export const syncStart = inngest.createFunction(
     });
 
     logger.info('SITE SYNC DRIVES');
-    const promises = sites.map((site) =>
-      step.sendEvent('drives-sync-triggered', {
-        name: 'one-drive/drives.sync.triggered',
-        data: {
-          token,
-          siteId: site.id,
-          isFirstSync,
-          skipToken: null,
-          organisationId: organisation.id,
-          organisationRegion: organisation.region,
-        },
-      })
-    );
 
-    await Promise.allSettled(promises);
+    if (sites.length) {
+      const eventsWait = sites.map(({ id }) => {
+        return step.waitForEvent(`wait-for-drives-complete-${id}`, {
+          event: 'one-drive/drives.sync.completed',
+          timeout: '1d',
+          if: `async.data.organisationId == '${organisationId}' && async.data.siteId == '${id}'`,
+        });
+      });
+
+      await step.sendEvent(
+        'drives-sync-triggered',
+        sites.map(({ id }) => ({
+          name: 'one-drive/drives.sync.triggered',
+          data: {
+            siteId: id,
+            isFirstSync,
+            skipToken: null,
+            organisationId,
+          },
+        }))
+      );
+
+      await Promise.all(eventsWait);
+    }
 
     if (nextSkipToken) {
       logger.info('SITE PAGINATE');
@@ -94,6 +101,21 @@ export const syncStart = inngest.createFunction(
         status: 'ongoing',
       };
     }
+
+    await step.run('elba-permissions-delete', async () => {
+      logger.info('🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀 ~ elba-permissions-delete');
+
+      const elba = new Elba({
+        organisationId,
+        apiKey: env.ELBA_API_KEY,
+        baseUrl: env.ELBA_API_BASE_URL,
+        region: organisation.region,
+      });
+
+      await elba.dataProtection.deleteObjects({
+        syncedBefore: new Date(syncStartedAt).toISOString(),
+      });
+    });
 
     return {
       status: 'completed',
