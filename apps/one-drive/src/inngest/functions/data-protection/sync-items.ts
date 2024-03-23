@@ -1,8 +1,13 @@
 import { logger } from '@elba-security/logger';
 import type { DataProtectionObject, DataProtectionObjectPermission } from '@elba-security/sdk';
 import { Elba } from '@elba-security/sdk';
+import { eq } from 'drizzle-orm';
+import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
+import { db } from '@/database/client';
+import { organisationsTable } from '@/database/schema';
+import { decrypt } from '@/common/crypto';
 import type { MicrosoftDriveItem } from '../../../connectors/share-point/items';
 import { getItems } from '../../../connectors/share-point/items';
 import type { MicrosoftDriveItemPermissions } from '../../../connectors/share-point/permissions';
@@ -39,7 +44,7 @@ export const parseItems = (
 export const getCkunkedArray = <T>(array: T[], batchSize: number): T[][] => {
   const chunks: T[][] = [];
   for (let i = 0; i < array.length; i += batchSize) {
-    chunks.push(array.slice(i, Number(Number(batchSize))));
+    chunks.push(array.slice(i, i + Number(batchSize)));
   }
   return chunks;
 };
@@ -47,12 +52,7 @@ export const getCkunkedArray = <T>(array: T[], batchSize: number): T[][] => {
 export const formatPermissions = (
   permission: MicrosoftDriveItemPermissions
 ): DataProtectionObjectPermission[] | [] => {
-  const invalidPermissions: MicrosoftDriveItemPermissions[] = [];
-
-  if (
-    typeof permission.grantedToV2?.user?.displayName === 'string' &&
-    typeof permission.grantedToV2.user.id === 'string'
-  ) {
+  if (permission.grantedToV2?.user) {
     return [
       {
         id: permission.id,
@@ -66,41 +66,27 @@ export const formatPermissions = (
         },
       },
     ];
-  } else if (permission.grantedToIdentitiesV2?.length) {
-    const userPermissions = permission.grantedToIdentitiesV2.filter((p) => Boolean(p?.user));
+  } else if (permission.grantedToIdentitiesV2) {
+    const formattedPermissions: DataProtectionObjectPermission[] = [];
 
-    if (userPermissions.length) {
-      const formattedPermissions: DataProtectionObjectPermission[] = [];
-
-      for (const p of userPermissions) {
-        if (typeof p?.user?.displayName === 'string' && typeof p.user.id === 'string') {
-          formattedPermissions.push({
-            id: `${permission.id}${env.ID_SEPARATOR}${p.user.id}`,
-            type: 'user',
-            displayName: p.user.displayName,
-            userId: p.user.id,
-            email: p.user.email,
-            metadata: {
-              permissionId: permission.id,
-              roles: permission.roles,
-            },
-          });
-        } else {
-          invalidPermissions.push({
-            ...permission,
-            grantedToIdentitiesV2: [p],
-          });
-        }
+    for (const p of permission.grantedToIdentitiesV2) {
+      if (p.user) {
+        formattedPermissions.push({
+          id: `${permission.id}${env.ID_SEPARATOR}${p.user.id}`,
+          type: 'user',
+          displayName: p.user.displayName,
+          userId: p.user.id,
+          email: p.user.email,
+          metadata: {
+            permissionId: permission.id,
+            roles: permission.roles,
+          },
+        });
       }
-
-      return formattedPermissions;
     }
-  } else {
-    invalidPermissions.push(permission);
+
+    return formattedPermissions;
   }
-
-  logger.warn('Retrieved permissions are invalid, or empty permissions array', invalidPermissions);
-
   return [];
 };
 
@@ -142,7 +128,7 @@ export const syncItems = inngest.createFunction(
     },
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 2,
+      limit: env.MICROSOFT_DATA_PROTECTION_ITEMS_SYNC_CONCURRENCY,
     },
     cancelOn: [
       {
@@ -154,21 +140,27 @@ export const syncItems = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.USERS_SYNC_MAX_RETRY,
+    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/items.sync.triggered' },
   async ({ event, step }) => {
-    const { token, siteId, driveId, isFirstSync, folderId, skipToken, ...organisation } =
-      event.data;
+    const { siteId, driveId, isFirstSync, folderId, skipToken, organisationId } = event.data;
 
     logger.info('Sync Items');
 
-    const elba = new Elba({
-      organisationId: organisation.organisationId,
-      apiKey: env.ELBA_API_KEY,
-      baseUrl: env.ELBA_API_BASE_URL,
-      region: organisation.organisationRegion,
-    });
+    const [organisation] = await db
+      .select({
+        token: organisationsTable.token,
+        region: organisationsTable.region,
+      })
+      .from(organisationsTable)
+      .where(eq(organisationsTable.id, organisationId));
+
+    if (!organisation) {
+      throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
+    }
+
+    const token = await decrypt(organisation.token);
 
     const { folders, items, nextSkipToken } = await step.run('paginate', async () => {
       const result = await getItems({
@@ -186,22 +178,30 @@ export const syncItems = inngest.createFunction(
     });
 
     if (folders.length) {
-      const folderPromises = folders.map((folder) =>
-        step.sendEvent('one-drive-sync-items', {
+      const eventsWait = folders.map(async ({ id }) => {
+        return step.waitForEvent(`wait-for-folders-complete-${id}`, {
+          event: 'one-drive/foder-items.sync.completed',
+          timeout: '1d',
+          if: `async.data.organisationId == '${organisationId}' && async.data.folderId == '${id}'`,
+        });
+      });
+
+      await step.sendEvent(
+        'items.sync.triggered',
+        folders.map(({ id }) => ({
           name: 'one-drive/items.sync.triggered',
           data: {
-            token,
             siteId,
             driveId,
             isFirstSync,
-            folderId: folder.id,
+            folderId: id,
             skipToken: null,
-            ...organisation,
+            organisationId,
           },
-        })
+        }))
       );
 
-      await Promise.allSettled(folderPromises);
+      await Promise.all(eventsWait);
     }
 
     const itemsWithPermisionsResult = await step.run('item-permissions', async () => {
@@ -209,7 +209,7 @@ export const syncItems = inngest.createFunction(
 
       const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
         [...folders, ...items],
-        env.MICROSOFT_CHUNK_SIZE
+        env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
       );
 
       for (const itemsChunk of itemsChunks) {
@@ -226,9 +226,9 @@ export const syncItems = inngest.createFunction(
           )
         );
 
-        for (let i = 0; i < itemPermissionsChunks.length; i++) {
-          const item = itemsChunk[i];
-          const permissions = itemPermissionsChunks[i];
+        for (let e = 0; e < itemPermissionsChunks.length; e++) {
+          const item = itemsChunk[e];
+          const permissions = itemPermissionsChunks[e];
 
           if (!item || !permissions) continue;
 
@@ -248,16 +248,23 @@ export const syncItems = inngest.createFunction(
 
     if (dataProtectionItems.length) {
       await step.run('elba-permissions-update', async () => {
-        if (dataProtectionItems.length)
-          await elba.dataProtection.updateObjects({
-            objects: dataProtectionItems,
-          });
+        const elba = new Elba({
+          organisationId,
+          apiKey: env.ELBA_API_KEY,
+          baseUrl: env.ELBA_API_BASE_URL,
+          region: organisation.region,
+        });
+
+        await elba.dataProtection.updateObjects({
+          objects: dataProtectionItems,
+        });
       });
     }
 
     if (nextSkipToken) {
       logger.info('ITEMS PAGINATION');
-      await step.sendEvent('sync-next-drives-page', {
+
+      await step.sendEvent('sync-next-items-page', {
         name: 'one-drive/items.sync.triggered',
         data: {
           ...event.data,
@@ -268,6 +275,24 @@ export const syncItems = inngest.createFunction(
       return {
         status: 'ongoing',
       };
+    }
+
+    if (folderId) {
+      await step.sendEvent('folders-sync-complete', {
+        name: 'one-drive/foder-items.sync.completed',
+        data: {
+          organisationId,
+          folderId,
+        },
+      });
+    } else {
+      await step.sendEvent('items-sync-complete', {
+        name: 'one-drive/items.sync.completed',
+        data: {
+          organisationId,
+          driveId,
+        },
+      });
     }
 
     return {

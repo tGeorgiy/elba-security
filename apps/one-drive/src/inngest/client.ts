@@ -41,24 +41,38 @@ export const inngest = new Inngest({
     };
     'one-drive/drives.sync.triggered': {
       data: {
-        token: string;
         siteId: string;
         organisationId: string;
-        organisationRegion: string;
         isFirstSync: boolean;
         skipToken: string | null;
       };
     };
     'one-drive/items.sync.triggered': {
       data: {
-        token: string;
         siteId: string;
         driveId: string;
         organisationId: string;
-        organisationRegion: string;
         isFirstSync: boolean;
         folderId: string | null;
         skipToken: string | null;
+      };
+    };
+    'one-drive/drives.sync.completed': {
+      data: {
+        organisationId: string;
+        siteId: string;
+      };
+    };
+    'one-drive/items.sync.completed': {
+      data: {
+        organisationId: string;
+        driveId: string;
+      };
+    };
+    'one-drive/foder-items.sync.completed': {
+      data: {
+        organisationId: string;
+        folderId: string;
       };
     };
   }>(),
