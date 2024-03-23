@@ -38,50 +38,6 @@ import { getNextSkipTokenFromNextLink } from '../../common/pagination';
 
 const driveSchema = z.object({
   id: z.string(),
-  createdDateTime: z.string().optional(),
-  lastModifiedDateTime: z.string().optional(),
-  name: z.string().optional(),
-  webUrl: z.string().optional(),
-  description: z.string().optional(),
-  driveType: z.string().optional(),
-  createdBy: z
-    .object({
-      user: z.object({
-        user: z.object({
-          email: z.string().optional(),
-          id: z.string().optional(),
-          displayName: z.string(),
-        }),
-      }),
-    })
-    .optional(),
-  lastModifiedBy: z
-    .object({
-      user: z.object({
-        email: z.string(),
-        id: z.string(),
-        displayName: z.string(),
-      }),
-    })
-    .optional(),
-  owner: z
-    .object({
-      group: z.object({
-        email: z.string(),
-        id: z.string(),
-        displayName: z.string(),
-      }),
-    })
-    .optional(),
-  quota: z
-    .object({
-      deleted: z.number(),
-      remaining: z.number(),
-      state: z.string(),
-      total: z.number(),
-      used: z.number(),
-    })
-    .optional(),
 });
 
 export type MicrosoftDrive = z.infer<typeof driveSchema>;
@@ -94,7 +50,7 @@ export type GetDrivesParams = {
 
 export const getDrives = async ({ token, siteId, skipToken }: GetDrivesParams) => {
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives`);
-  url.searchParams.append('$top', String(env.SITES_SYNC_BATCH_SIZE));
+  url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_SYNC_CHUNK_SIZE));
   url.searchParams.append('$select', 'id');
 
   if (skipToken) {

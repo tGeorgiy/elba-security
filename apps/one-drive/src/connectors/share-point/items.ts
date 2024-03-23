@@ -49,14 +49,8 @@ import { getNextSkipTokenFromNextLink } from '../../common/pagination';
 
 const driveItemSchema = z.object({
   id: z.string(),
-  '@microsoft.graph.downloadUrl': z.string().optional(),
-  createdDateTime: z.string().optional(),
-  lastModifiedDateTime: z.string().optional(),
   name: z.string(),
   webUrl: z.string(),
-  cTag: z.string().optional(),
-  eTag: z.string().optional(),
-  size: z.number().optional(),
   createdBy: z.object({
     user: z.object({
       email: z.string().optional(),
@@ -64,47 +58,9 @@ const driveItemSchema = z.object({
       displayName: z.string(),
     }),
   }),
-  lastModifiedBy: z
-    .object({
-      user: z.object({
-        email: z.string(),
-        id: z.string(),
-        displayName: z.string(),
-      }),
-    })
-    .optional(),
-  parentReference: z
-    .object({
-      driveType: z.string(),
-      driveId: z.string(),
-      id: z.string(),
-      name: z.string(),
-      path: z.string(),
-      siteId: z.string(),
-    })
-    .optional(),
-  fileSystemInfo: z
-    .object({
-      createdDateTime: z.string(),
-      lastModifiedDateTime: z.string(),
-    })
-    .optional(),
-  file: z
-    .object({
-      group: z.object({
-        mimeType: z.string(),
-        hashes: z.object({ quickXorHash: z.string() }),
-      }),
-    })
-    .optional(),
   folder: z
     .object({
       childCount: z.number(),
-    })
-    .optional(),
-  shared: z
-    .object({
-      scope: z.string(),
     })
     .optional(),
 });
@@ -123,7 +79,7 @@ export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: 
   const urlEnding = folderId ? `items/${folderId}/children` : 'root/children';
 
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/${urlEnding}`);
-  url.searchParams.append('$top', String(env.SITES_SYNC_BATCH_SIZE));
+  url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE));
   url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy');
 
   if (skipToken) {

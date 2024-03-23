@@ -1,5 +1,5 @@
 import { http } from 'msw';
-import { describe, expect, test, beforeEach, vi } from 'vitest';
+import { describe, expect, test, beforeEach } from 'vitest';
 import { env } from '@/env';
 import { server } from '../../../vitest/setup-msw-handlers';
 import { MicrosoftError } from '../../common/error';
@@ -14,7 +14,7 @@ const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const folderId = 'some-folder-id';
 
-const items: MicrosoftDriveItem[] = Array.from({ length: env.SITES_SYNC_BATCH_SIZE }, (_, i) => ({
+const items: MicrosoftDriveItem[] = Array.from({ length: 5 }, (_, i) => ({
   id: `item-id-${i}`,
   name: `item-name-${i}`,
   webUrl: `item-webUrl-${i}`,
@@ -32,8 +32,6 @@ describe('items connector', () => {
   describe('getItems', () => {
     // mock token API endpoint using msw
     beforeEach(() => {
-      vi.resetAllMocks();
-
       server.use(
         http.get(
           `${env.MICROSOFT_API_URL}/sites/:siteId/drives/:driveId/root/children`,
