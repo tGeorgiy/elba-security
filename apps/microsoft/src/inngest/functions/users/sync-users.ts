@@ -30,17 +30,17 @@ export const syncUsers = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'microsoft/microsoft.elba_app.uninstalled',
+        event: 'microsoft/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'microsoft/microsoft.elba_app.installed',
+        event: 'microsoft/app.installed',
         match: 'data.organisationId',
       },
     ],
     retries: env.USERS_SYNC_MAX_RETRY,
   },
-  { event: 'microsoft/users.sync.triggered' },
+  { event: 'microsoft/users.sync.requested' },
   async ({ event, step }) => {
     const { organisationId, syncStartedAt, skipToken } = event.data;
 
@@ -88,7 +88,7 @@ export const syncUsers = inngest.createFunction(
 
     if (nextSkipToken) {
       await step.sendEvent('sync-next-users-page', {
-        name: 'microsoft/users.sync.triggered',
+        name: 'microsoft/users.sync.requested',
         data: {
           ...event.data,
           skipToken: nextSkipToken,

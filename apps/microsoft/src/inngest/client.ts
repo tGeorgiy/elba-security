@@ -29,7 +29,7 @@ export const inngest = new Inngest({
         userId: string;
       };
     };
-    'microsoft/users.sync.triggered': {
+    'microsoft/users.sync.requested': {
       data: {
         organisationId: string;
         isFirstSync: boolean;
@@ -37,19 +37,20 @@ export const inngest = new Inngest({
         skipToken: string | null;
       };
     };
-    'microsoft/microsoft.elba_app.installed': {
+    'microsoft/app.installed': {
       data: {
         organisationId: string;
       };
     };
-    'microsoft/microsoft.elba_app.uninstalled': {
+    'microsoft/app.uninstalled': {
       data: {
         organisationId: string;
       };
     };
-    'microsoft/token.refresh.triggered': {
+    'microsoft/token.refresh.requested': {
       data: {
         organisationId: string;
+        expiresAt: number;
       };
     };
   }>(),

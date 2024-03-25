@@ -10,20 +10,16 @@ export const scheduleUsersSyncs = inngest.createFunction(
     const organisations = await db
       .select({
         id: organisationsTable.id,
-        tenantId: organisationsTable.tenantId,
-        region: organisationsTable.region,
       })
       .from(organisationsTable);
 
     if (organisations.length > 0) {
       await step.sendEvent(
         'sync-organisations-users',
-        organisations.map(({ id, tenantId, region }) => ({
-          name: 'microsoft/users.sync.triggered',
+        organisations.map(({ id }) => ({
+          name: 'microsoft/users.sync.requested',
           data: {
-            tenantId,
             organisationId: id,
-            region,
             isFirstSync: false,
             syncStartedAt: Date.now(),
             skipToken: null,

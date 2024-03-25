@@ -11,7 +11,7 @@ import { NonRetriableError } from 'inngest';
 const handler: FunctionHandler = async ({
   event,
   step,
-}: InputArgWithTrigger<'dropbox/users.sync_page.triggered'>) => {
+}: InputArgWithTrigger<'dropbox/users.sync_page.requested'>) => {
   const { organisationId, syncStartedAt, cursor } = event.data;
 
   const [organisation] = await getOrganisationAccessDetails(organisationId);
@@ -36,7 +36,6 @@ const handler: FunctionHandler = async ({
     });
 
     const { members, ...rest } = await dbx.fetchUsers(cursor);
-
     if (members.length > 0) {
       await elba.users.update({
         users: members,
@@ -48,7 +47,7 @@ const handler: FunctionHandler = async ({
 
   if (users?.hasMore) {
     return await step.sendEvent('run-user-sync-job', {
-      name: 'dropbox/users.sync_page.triggered',
+      name: 'dropbox/users.sync_page.requested',
       data: { ...event.data, cursor: users.nextCursor },
     });
   }
@@ -74,6 +73,6 @@ export const syncUserPage = inngest.createFunction(
       run: 'event.data.isFirstSync ? 600 : 0',
     },
   },
-  { event: 'dropbox/users.sync_page.triggered' },
+  { event: 'dropbox/users.sync_page.requested' },
   handler
 );

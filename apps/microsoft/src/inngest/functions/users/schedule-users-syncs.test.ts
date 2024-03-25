@@ -35,18 +35,15 @@ describe('schedule-users-syncs', () => {
     const [result, { step }] = setup();
 
     await expect(result).resolves.toStrictEqual({
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- convenience
-      organisations: organisations.map(({ token, ...organisation }) => organisation),
+      organisations: organisations.map(({ id }) => ({ id })),
     });
     expect(step.sendEvent).toBeCalledTimes(1);
     expect(step.sendEvent).toBeCalledWith(
       'sync-organisations-users',
-      organisations.map(({ id, tenantId, region }) => ({
-        name: 'microsoft/users.sync.triggered',
+      organisations.map(({ id }) => ({
+        name: 'microsoft/users.sync.requested',
         data: {
-          tenantId,
           organisationId: id,
-          region,
           skipToken: null,
           syncStartedAt: now,
           isFirstSync: false,

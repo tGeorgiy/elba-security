@@ -10,7 +10,7 @@ import { NonRetriableError } from 'inngest';
 const handler: FunctionHandler = async ({
   event,
   step,
-}: InputArgWithTrigger<'dropbox/third_party_apps.sync_page.triggered'>) => {
+}: InputArgWithTrigger<'dropbox/third_party_apps.sync_page.requested'>) => {
   const { organisationId, cursor, syncStartedAt } = event.data;
 
   const [organisation] = await getOrganisationAccessDetails(organisationId);
@@ -49,7 +49,7 @@ const handler: FunctionHandler = async ({
 
   if (result?.hasMore) {
     return await step.sendEvent('third-party-apps-run-sync-jobs', {
-      name: 'dropbox/third_party_apps.sync_page.triggered',
+      name: 'dropbox/third_party_apps.sync_page.requested',
       data: {
         ...event.data,
         cursor: result.nextCursor,
@@ -70,12 +70,22 @@ export const syncApps = inngest.createFunction(
     priority: {
       run: 'event.data.isFirstSync ? 600 : 0',
     },
+    cancelOn: [
+      {
+        event: 'dropbox/app.install.requested',
+        match: 'data.organisationId',
+      },
+      {
+        event: 'dropbox/app.uninstall.requested',
+        match: 'data.organisationId',
+      },
+    ],
     retries: env.DROPBOX_TPA_SYNC_RETRIES,
     concurrency: {
       limit: env.DROPBOX_TPA_SYNC_CONCURRENCY,
       key: 'event.data.organisationId',
     },
   },
-  { event: 'dropbox/third_party_apps.sync_page.triggered' },
+  { event: 'dropbox/third_party_apps.sync_page.requested' },
   handler
 );

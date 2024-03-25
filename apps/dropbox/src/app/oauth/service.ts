@@ -1,7 +1,6 @@
 import { DBXAccess, DBXAuth } from '@/connectors';
 import { insertOrganisation } from './data';
 import addSeconds from 'date-fns/addSeconds';
-import subMinutes from 'date-fns/subMinutes';
 import { inngest } from '@/inngest/client';
 import { encrypt } from '@/common/crypto';
 
@@ -64,7 +63,6 @@ export const generateAccessToken = async ({
     throw new Error('Could not get root namespace id');
   }
 
-  const tokenExpiresAt = addSeconds(new Date(), expires_in);
   await insertOrganisation({
     organisationId,
     accessToken: await encrypt(accessToken),
@@ -76,24 +74,24 @@ export const generateAccessToken = async ({
 
   await inngest.send([
     {
-      name: 'dropbox/token.refresh.triggered',
+      name: 'dropbox/token.refresh.requested',
       data: {
         organisationId,
-      },
-      ts: subMinutes(tokenExpiresAt, 30).getTime(),
-    },
-    {
-      name: 'dropbox/token.refresh.canceled',
-      data: {
-        organisationId,
+        expiresAt: addSeconds(new Date(), expires_in).getTime(),
       },
     },
     {
-      name: 'dropbox/users.sync_page.triggered',
+      name: 'dropbox/users.sync_page.requested',
       data: {
         organisationId,
         isFirstSync: true,
         syncStartedAt: Date.now(),
+      },
+    },
+    {
+      name: 'dropbox/app.install.requested',
+      data: {
+        organisationId,
       },
     },
   ]);

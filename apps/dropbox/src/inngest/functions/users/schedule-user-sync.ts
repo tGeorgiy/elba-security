@@ -9,9 +9,9 @@ export const scheduleUserSync = inngest.createFunction(
     const syncStartedAt = Date.now();
     if (organisations.length > 0) {
       await step.sendEvent(
-        'dropbox-sync-user-page',
+        'sync-user',
         organisations.map(({ organisationId }) => ({
-          name: 'dropbox/users.sync_page.triggered',
+          name: 'dropbox/users.sync_page.requested',
           data: { organisationId, isFirstSync: false, syncStartedAt },
         }))
       );

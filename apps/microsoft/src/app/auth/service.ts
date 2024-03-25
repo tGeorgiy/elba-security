@@ -1,10 +1,10 @@
-import { subMinutes } from 'date-fns/subMinutes';
 import { addSeconds } from 'date-fns/addSeconds';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { getToken } from '@/connectors/microsoft/auth';
 import { inngest } from '@/inngest/client';
 import { encrypt } from '@/common/crypto';
+import { getUsers } from '@/connectors/microsoft/users';
 
 type SetupOrganisationParams = {
   organisationId: string;
@@ -18,6 +18,13 @@ export const setupOrganisation = async ({
   tenantId,
 }: SetupOrganisationParams) => {
   const { token, expiresIn } = await getToken(tenantId);
+
+  try {
+    // we test the installaton: microsoft API takes time to propagate it through its services
+    await getUsers({ token, tenantId, skipToken: null });
+  } catch {
+    return { isAppInstallationCompleted: false };
+  }
 
   const encodedToken = await encrypt(token);
   await db
@@ -34,13 +41,13 @@ export const setupOrganisation = async ({
 
   await inngest.send([
     {
-      name: 'microsoft/microsoft.elba_app.installed',
+      name: 'microsoft/app.installed',
       data: {
         organisationId,
       },
     },
     {
-      name: 'microsoft/users.sync.triggered',
+      name: 'microsoft/users.sync.requested',
       data: {
         organisationId,
         isFirstSync: true,
@@ -49,12 +56,13 @@ export const setupOrganisation = async ({
       },
     },
     {
-      name: 'microsoft/token.refresh.triggered',
+      name: 'microsoft/token.refresh.requested',
       data: {
         organisationId,
+        expiresAt: addSeconds(new Date(), expiresIn).getTime(),
       },
-      // we schedule a token refresh 5 minutes before it expires
-      ts: subMinutes(addSeconds(new Date(), expiresIn), 5).getTime(),
     },
   ]);
+
+  return { isAppInstallationCompleted: true };
 };
