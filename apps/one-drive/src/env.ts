@@ -53,7 +53,7 @@ export const env = z
       .max(MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE)
       .default(15),
     MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY: zEnvRetry(),
-    MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * *'),
+    MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * 1-5'),
     ID_SEPARATOR: z.string().default('-SEPARATOR-'),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),
@@ -66,7 +66,7 @@ export const env = z
     REMOVE_ORGANISATION_MAX_RETRY: zEnvRetry(),
     VERCEL_PREFERRED_REGION: z.string().min(1),
     TOKEN_REFRESH_MAX_RETRY: zEnvRetry(),
-    USERS_SYNC_CRON: z.string().default('0 0 * * *'),
+    USERS_SYNC_CRON: z.string().default('0 0 * * 1-5'),
     USERS_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(100),
     SITES_SYNC_BATCH_SIZE: z.coerce.number().int().positive().default(100),
     USERS_SYNC_MAX_RETRY: zEnvRetry(),
