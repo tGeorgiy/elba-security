@@ -6,29 +6,6 @@ import {
   type MicrosoftPaginatedResponse,
 } from '../../common/pagination';
 
-// Responce on /sites?search=*
-// {
-//   createdDateTime: '2024-02-19T07:41:40Z',
-//   id: 'testcomp633.sharepoint.com,01a63770-aff9-42b8-831d-46b05ff02b5c,166a5d4b-4220-4844-8979-a76ad03d4337',
-//   lastModifiedDateTime: '2024-02-18T00:24:14Z',
-//   name: 'testcomp633.sharepoint.com',
-//   webUrl: 'https://testcomp633.sharepoint.com',
-//   displayName: 'Communication site',
-//   root: {},
-//   siteCollection: [Object]
-// }
-
-// Responce on /sites
-// const siteSchema = z.object({
-//   id: z.string(),
-//   name: z.string().optional(),
-//   webUrl: z.string().optional(),
-//   displayName: z.string().optional(),
-//   isPersonalSite: z.boolean(),
-//   siteCollection: z.object({ hostname: z.string() }).optional(),
-//   root: z.object({}).optional(),
-// });
-
 const siteSchema = z.object({
   id: z.string(),
 });

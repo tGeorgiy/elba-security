@@ -53,6 +53,7 @@ export const env = z
       .max(MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE)
       .default(15),
     MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY: zEnvRetry(),
+    MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * *'),
     ID_SEPARATOR: z.string().default('-SEPARATOR-'),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),

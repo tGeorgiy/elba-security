@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import * as authConnector from '@/connectors/one-drive/auth';
+import * as authConnector from '@/connectors/auth/auth';
 import * as crypto from '@/common/crypto';
 import { setupOrganisation } from './service';
 
@@ -81,6 +81,15 @@ describe('setupOrganisation', () => {
           expiresAt: now.getTime() + expiresIn * 1000,
         },
       },
+      {
+        name: 'one-drive/data_protection.sync.requested',
+        data: {
+          organisationId: organisation.id,
+          syncStartedAt: now.getTime(),
+          isFirstSync: true,
+          skipToken: null,
+        },
+      },
     ]);
   });
 
@@ -135,6 +144,15 @@ describe('setupOrganisation', () => {
         data: {
           organisationId: organisation.id,
           expiresAt: now.getTime() + expiresIn * 1000,
+        },
+      },
+      {
+        name: 'one-drive/data_protection.sync.requested',
+        data: {
+          organisationId: organisation.id,
+          syncStartedAt: now.getTime(),
+          isFirstSync: true,
+          skipToken: null,
         },
       },
     ]);

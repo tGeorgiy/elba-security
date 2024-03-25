@@ -4,6 +4,7 @@ import { syncSites } from './data-protection/sync-sites';
 import { refreshToken } from './token/refresh-token';
 import { scheduleUsersSyncs } from './users/schedule-users-syncs';
 import { syncUsers } from './users/sync-users';
+import { scheduleDataProtectionSyncJobs } from './data-protection/schedule-sync-sites';
 
 export const inngestFunctions = [
   syncUsers,
@@ -12,4 +13,5 @@ export const inngestFunctions = [
   syncSites,
   syncDrives,
   syncItems,
+  scheduleDataProtectionSyncJobs,
 ];
