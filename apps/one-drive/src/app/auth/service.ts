@@ -2,7 +2,7 @@ import { addSeconds } from 'date-fns/addSeconds';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import { getToken } from '@/connectors/one-drive/auth';
+import { getToken } from '@/connectors/auth/auth';
 import { encrypt } from '@/common/crypto';
 
 type SetupOrganisationParams = {
@@ -52,6 +52,15 @@ export const setupOrganisation = async ({
       data: {
         organisationId,
         expiresAt: addSeconds(new Date(), expiresIn).getTime(),
+      },
+    },
+    {
+      name: 'one-drive/data_protection.sync.requested',
+      data: {
+        organisationId,
+        syncStartedAt: Date.now(),
+        isFirstSync: true,
+        skipToken: null,
       },
     },
   ]);
