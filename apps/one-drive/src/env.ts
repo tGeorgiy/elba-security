@@ -54,7 +54,6 @@ export const env = z
       .default(15),
     MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY: zEnvRetry(),
     MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * 1-5'),
-    ID_SEPARATOR: z.string().default('-SEPARATOR-'),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),
     ELBA_REDIRECT_URL: z.string().url(),

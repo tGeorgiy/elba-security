@@ -9,7 +9,7 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/per
 import { encrypt } from '@/common/crypto';
 import { organisationsTable } from '@/database/schema';
 import { db } from '@/database/client';
-import { syncItems, parseItems, parseDataProtetionItems } from './sync-items';
+import { syncItems, groupItems, formatDataProtetionItems } from './sync-items';
 import type { ItemsWithPermisions } from './sync-items';
 
 const token = 'test-token';
@@ -122,7 +122,7 @@ describe('sync-items', () => {
       items: groupedItems,
       nextSkipToken,
     });
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
+    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
       permissions,
       nextSkipToken: skipToken,
     });
@@ -131,7 +131,7 @@ describe('sync-items', () => {
 
     await expect(result).resolves.toStrictEqual({ status: 'ongoing' });
 
-    expect(step.run).toBeCalledTimes(3);
+    expect(step.run).toBeCalledTimes(2);
 
     expect(itemsConnector.getItems).toBeCalledTimes(1);
     expect(itemsConnector.getItems).toBeCalledWith({
@@ -142,7 +142,7 @@ describe('sync-items', () => {
       skipToken,
     });
 
-    const { folders, items } = parseItems(groupedItems);
+    const { folders, files } = groupItems(groupedItems);
 
     if (folders.length) {
       expect(step.sendEvent).toBeCalledTimes(defaultEventsCount + 1);
@@ -174,19 +174,18 @@ describe('sync-items', () => {
       }
     }
 
-    expect(permissionsConnector.getItemPermissions).toBeCalledTimes(groupedItems.length);
+    expect(permissionsConnector.getAllItemPermissions).toBeCalledTimes(groupedItems.length);
 
-    for (const item of [...folders, ...items]) {
-      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+    for (const item of [...folders, ...files]) {
+      expect(permissionsConnector.getAllItemPermissions).toBeCalledWith({
         token,
         siteId,
         driveId,
         itemId: item.id,
-        skipToken: null,
       });
     }
 
-    const itemsWithPermisionsResult = [...folders, ...items].map((item) => ({
+    const itemsWithPermisionsResult = [...folders, ...files].map((item) => ({
       item,
       permissions: permissions.map((permission) =>
         permissionsConnector.validateAndParsePermission(
@@ -195,7 +194,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = parseDataProtetionItems(
+    const dataProtectionItems = formatDataProtetionItems(
       itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
     );
 
@@ -237,7 +236,7 @@ describe('sync-items', () => {
       items: groupedItems,
       nextSkipToken,
     });
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
+    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
       permissions,
       nextSkipToken: skipToken,
     });
@@ -246,7 +245,7 @@ describe('sync-items', () => {
 
     await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
-    expect(step.run).toBeCalledTimes(3);
+    expect(step.run).toBeCalledTimes(2);
 
     expect(itemsConnector.getItems).toBeCalledTimes(1);
     expect(itemsConnector.getItems).toBeCalledWith({
@@ -257,7 +256,7 @@ describe('sync-items', () => {
       skipToken,
     });
 
-    const { folders, items } = parseItems(groupedItems);
+    const { folders, files } = groupItems(groupedItems);
 
     if (folders.length) {
       expect(step.sendEvent).toBeCalledTimes(defaultEventsCount + 1);
@@ -289,19 +288,18 @@ describe('sync-items', () => {
       }
     }
 
-    expect(permissionsConnector.getItemPermissions).toBeCalledTimes(groupedItems.length);
+    expect(permissionsConnector.getAllItemPermissions).toBeCalledTimes(groupedItems.length);
 
-    for (const item of [...folders, ...items]) {
-      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+    for (const item of [...folders, ...files]) {
+      expect(permissionsConnector.getAllItemPermissions).toBeCalledWith({
         token,
         siteId,
         driveId,
         itemId: item.id,
-        skipToken: null,
       });
     }
 
-    const itemsWithPermisionsResult = [...folders, ...items].map((item) => ({
+    const itemsWithPermisionsResult = [...folders, ...files].map((item) => ({
       item,
       permissions: permissions.map((permission) =>
         permissionsConnector.validateAndParsePermission(
@@ -310,7 +308,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = parseDataProtetionItems(
+    const dataProtectionItems = formatDataProtetionItems(
       itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
     );
 
@@ -347,7 +345,7 @@ describe('sync-items', () => {
       items: itemItems,
       nextSkipToken,
     });
-    vi.spyOn(permissionsConnector, 'getItemPermissions').mockResolvedValue({
+    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
       permissions,
       nextSkipToken: skipToken,
     });
@@ -356,7 +354,7 @@ describe('sync-items', () => {
 
     await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
-    expect(step.run).toBeCalledTimes(3);
+    expect(step.run).toBeCalledTimes(2);
 
     expect(itemsConnector.getItems).toBeCalledTimes(1);
     expect(itemsConnector.getItems).toBeCalledWith({
@@ -367,23 +365,22 @@ describe('sync-items', () => {
       skipToken,
     });
 
-    const { items } = parseItems(groupedItems);
+    const { files } = groupItems(groupedItems);
 
     expect(step.waitForEvent).toBeCalledTimes(0);
 
-    expect(permissionsConnector.getItemPermissions).toBeCalledTimes(items.length);
+    expect(permissionsConnector.getAllItemPermissions).toBeCalledTimes(files.length);
 
-    for (const item of [...items]) {
-      expect(permissionsConnector.getItemPermissions).toBeCalledWith({
+    for (const item of [...files]) {
+      expect(permissionsConnector.getAllItemPermissions).toBeCalledWith({
         token,
         siteId,
         driveId,
         itemId: item.id,
-        skipToken: null,
       });
     }
 
-    const itemsWithPermisionsResult = [...items].map((item) => ({
+    const itemsWithPermisionsResult = [...files].map((item) => ({
       item,
       permissions: permissions.map((permission) =>
         permissionsConnector.validateAndParsePermission(
@@ -392,7 +389,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = parseDataProtetionItems(
+    const dataProtectionItems = formatDataProtetionItems(
       itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
     );
 
