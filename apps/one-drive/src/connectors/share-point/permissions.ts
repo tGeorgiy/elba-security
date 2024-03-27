@@ -90,7 +90,44 @@ export type GetPermissionsParams = {
   siteId: string;
   driveId: string;
   itemId: string;
-  skipToken: string | null;
+  skipToken?: string | null;
+};
+
+export const getAllItemPermissions = async ({
+  token,
+  siteId,
+  driveId,
+  itemId,
+  skipToken = null,
+}: GetPermissionsParams) => {
+  const { permissions, nextSkipToken } = await getItemPermissions({
+    token,
+    siteId,
+    driveId,
+    itemId,
+    skipToken,
+  });
+
+  if (nextSkipToken) {
+    const nextData = await getAllItemPermissions({
+      token,
+      siteId,
+      driveId,
+      itemId,
+      skipToken: nextSkipToken,
+    });
+
+    permissions.push(...nextData.permissions);
+  }
+
+  const parsedPermissions = permissions.reduce<MicrosoftDriveItemPermissions[]>((acc, el) => {
+    const parsedPermission = validateAndParsePermission(el);
+    if (parsedPermission !== null) acc.push(parsedPermission);
+
+    return acc;
+  }, []);
+
+  return { permissions: parsedPermissions, nextSkipToken };
 };
 
 export const getItemPermissions = async ({
@@ -123,26 +160,6 @@ export const getItemPermissions = async ({
   const data = (await response.json()) as MicrosoftPaginatedResponse<MicrosoftDriveItemPermissions>;
 
   const nextSkipToken = getNextSkipTokenFromNextLink(data['@odata.nextLink']);
-  const permissions = data.value;
 
-  if (nextSkipToken) {
-    const nextData = await getItemPermissions({
-      token,
-      siteId,
-      driveId,
-      itemId,
-      skipToken: nextSkipToken,
-    });
-
-    permissions.push(...nextData.permissions);
-  }
-
-  const parsedPermissions = permissions.reduce<MicrosoftDriveItemPermissions[]>((acc, el) => {
-    const parsedPermission = validateAndParsePermission(el);
-    if (parsedPermission !== null) acc.push(parsedPermission);
-
-    return acc;
-  }, []);
-
-  return { permissions: parsedPermissions, nextSkipToken };
+  return { permissions: data.value, nextSkipToken };
 };
