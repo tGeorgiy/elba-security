@@ -1,4 +1,3 @@
-import { logger } from '@elba-security/logger';
 import type { DataProtectionObject, DataProtectionObjectPermission } from '@elba-security/sdk';
 import { Elba } from '@elba-security/sdk';
 import { eq } from 'drizzle-orm';
@@ -11,35 +10,25 @@ import { decrypt } from '@/common/crypto';
 import type { MicrosoftDriveItem } from '../../../connectors/share-point/items';
 import { getItems } from '../../../connectors/share-point/items';
 import type { MicrosoftDriveItemPermissions } from '../../../connectors/share-point/permissions';
-import { getItemPermissions } from '../../../connectors/share-point/permissions';
+import { getAllItemPermissions } from '../../../connectors/share-point/permissions';
 
 export type ItemsWithPermisions = {
   item: MicrosoftDriveItem;
   permissions: MicrosoftDriveItemPermissions[];
 };
 
-export const parseItems = (
-  inputItems: MicrosoftDriveItem[]
-): {
-  folders: MicrosoftDriveItem[];
-  items: MicrosoftDriveItem[];
-} => {
-  const folders: MicrosoftDriveItem[] = [];
-  const items: MicrosoftDriveItem[] = [];
-
-  inputItems.forEach((item) => {
-    if (item.folder) {
-      folders.push(item);
-    } else {
-      items.push(item);
-    }
-  });
-
-  return {
-    folders,
-    items,
-  };
-};
+export const groupItems = (items: MicrosoftDriveItem[]) =>
+  items.reduce(
+    (acc, item) => {
+      if (item.folder) {
+        acc.folders.push(item);
+      } else {
+        acc.files.push(item);
+      }
+      return acc;
+    },
+    { files: [] as MicrosoftDriveItem[], folders: [] as MicrosoftDriveItem[] }
+  );
 
 export const getCkunkedArray = <T>(array: T[], batchSize: number): T[][] => {
   const chunks: T[][] = [];
@@ -67,41 +56,75 @@ export const formatPermissions = (
       },
     ];
   } else if (permission.grantedToIdentitiesV2) {
-    const formattedPermissions: DataProtectionObjectPermission[] = [];
-
-    for (const p of permission.grantedToIdentitiesV2) {
-      if (p.user) {
-        formattedPermissions.push({
-          id: `${permission.id}${env.ID_SEPARATOR}${p.user.id}`,
-          type: 'user',
-          displayName: p.user.displayName,
-          userId: p.user.id,
-          email: p.user.email,
-          metadata: {
-            permissionId: permission.id,
-            roles: permission.roles,
-          },
-        });
-      }
-    }
-
-    return formattedPermissions;
+    return permission.grantedToIdentitiesV2
+      .filter(({ user }) => user) // Need to check, maybe we can remove this, because user always should be after validation in connector
+      .map(({ user }) => ({
+        id: `${permission.id}-SEPARATOR-${user?.id}`,
+        type: 'user',
+        displayName: user?.displayName,
+        userId: user?.id,
+        email: user?.email,
+        metadata: {
+          permissionId: permission.id,
+          roles: permission.roles,
+        },
+      })) as DataProtectionObjectPermission[];
   }
   return [];
 };
 
-export const parseDataProtetionItems = (
+export const getItemsWithPermisionsFromChunks = async ({
+  itemsChunks,
+  token,
+  siteId,
+  driveId,
+}: {
+  itemsChunks: MicrosoftDriveItem[][];
+  token: string;
+  siteId: string;
+  driveId: string;
+}) => {
+  const itemsWithPermisions: ItemsWithPermisions[] = [];
+
+  for (const itemsChunk of itemsChunks) {
+    // eslint-disable-next-line no-await-in-loop -- Avoiding hundreds of inngest functions
+    const itemPermissionsChunks = await Promise.all(
+      itemsChunk.map((item) =>
+        getAllItemPermissions({
+          token,
+          siteId,
+          driveId,
+          itemId: item.id,
+        })
+      )
+    );
+
+    for (let e = 0; e < itemPermissionsChunks.length; e++) {
+      const item = itemsChunk[e];
+      const permissions = itemPermissionsChunks[e];
+
+      if (!item || !permissions) continue;
+
+      itemsWithPermisions.push({
+        item,
+        permissions: permissions.permissions,
+      });
+    }
+  }
+
+  return itemsWithPermisions;
+};
+
+export const formatDataProtetionItems = (
   itemsWithPermisions: ItemsWithPermisions[]
 ): DataProtectionObject[] => {
   const dataProtection: DataProtectionObject[] = [];
 
   for (const { item, permissions } of itemsWithPermisions) {
     if (item.createdBy.user.id) {
-      const validPermissions: MicrosoftDriveItemPermissions[] = permissions.filter((p) => {
-        if (p.link && p.link.scope === 'users') return true;
-        else if (p.grantedToV2?.user) return true;
-        return false;
-      });
+      const validPermissions: MicrosoftDriveItemPermissions[] = permissions.filter(
+        (permission) => permission.link?.scope === 'users' || permission.grantedToV2?.user
+      );
 
       if (validPermissions.length) {
         const dataProtectionItem = {
@@ -109,7 +132,7 @@ export const parseDataProtetionItems = (
           name: item.name,
           ownerId: item.createdBy.user.id,
           url: item.webUrl,
-          permissions: validPermissions.map((p) => formatPermissions(p)).flat(),
+          permissions: validPermissions.map(formatPermissions).flat(),
         };
 
         dataProtection.push(dataProtectionItem);
@@ -143,7 +166,7 @@ export const syncItems = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/items.sync.triggered' },
-  async ({ event, step }) => {
+  async ({ event, step, logger }) => {
     const { siteId, driveId, isFirstSync, folderId, skipToken, organisationId } = event.data;
 
     logger.info('Sync Items');
@@ -162,7 +185,7 @@ export const syncItems = inngest.createFunction(
 
     const token = await decrypt(organisation.token);
 
-    const { folders, items, nextSkipToken } = await step.run('paginate', async () => {
+    const { folders, files, nextSkipToken } = await step.run('paginate', async () => {
       const result = await getItems({
         token,
         siteId,
@@ -172,7 +195,7 @@ export const syncItems = inngest.createFunction(
       });
 
       return {
-        ...parseItems(result.items),
+        ...groupItems(result.items),
         nextSkipToken: result.nextSkipToken,
       };
     });
@@ -204,62 +227,36 @@ export const syncItems = inngest.createFunction(
       await Promise.all(eventsWait);
     }
 
-    const itemsWithPermisionsResult = await step.run('item-permissions', async () => {
-      const itemsWithPermisions: ItemsWithPermisions[] = [];
-
+    await step.run('get-permissions-update-elba', async () => {
       const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
-        [...folders, ...items],
+        [...folders, ...files],
         env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
       );
 
-      for (const itemsChunk of itemsChunks) {
-        // eslint-disable-next-line no-await-in-loop -- Avoiding hundreds of inngest functions
-        const itemPermissionsChunks = await Promise.all(
-          itemsChunk.map((item) =>
-            getItemPermissions({
-              token,
-              siteId,
-              driveId,
-              itemId: item.id,
-              skipToken: null,
-            })
-          )
-        );
-
-        for (let e = 0; e < itemPermissionsChunks.length; e++) {
-          const item = itemsChunk[e];
-          const permissions = itemPermissionsChunks[e];
-
-          if (!item || !permissions) continue;
-
-          itemsWithPermisions.push({
-            item,
-            permissions: permissions.permissions,
-          });
-        }
-      }
-
-      return itemsWithPermisions;
-    });
-
-    const dataProtectionItems = parseDataProtetionItems(
-      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
-    );
-
-    if (dataProtectionItems.length) {
-      await step.run('elba-permissions-update', async () => {
-        const elba = new Elba({
-          organisationId,
-          apiKey: env.ELBA_API_KEY,
-          baseUrl: env.ELBA_API_BASE_URL,
-          region: organisation.region,
-        });
-
-        await elba.dataProtection.updateObjects({
-          objects: dataProtectionItems,
-        });
+      const itemsWithPermisions = await getItemsWithPermisionsFromChunks({
+        itemsChunks,
+        token,
+        siteId,
+        driveId,
       });
-    }
+
+      const dataProtectionItems = formatDataProtetionItems(
+        itemsWithPermisions as unknown as ItemsWithPermisions[]
+      );
+
+      if (!dataProtectionItems.length) return;
+
+      const elba = new Elba({
+        organisationId,
+        apiKey: env.ELBA_API_KEY,
+        baseUrl: env.ELBA_API_BASE_URL,
+        region: organisation.region,
+      });
+
+      await elba.dataProtection.updateObjects({
+        objects: dataProtectionItems,
+      });
+    });
 
     if (nextSkipToken) {
       logger.info('ITEMS PAGINATION');
