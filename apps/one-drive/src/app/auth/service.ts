@@ -54,14 +54,5 @@ export const setupOrganisation = async ({
         expiresAt: addSeconds(new Date(), expiresIn).getTime(),
       },
     },
-    {
-      name: 'one-drive/data_protection.sync.requested',
-      data: {
-        organisationId,
-        syncStartedAt: Date.now(),
-        isFirstSync: true,
-        skipToken: null,
-      },
-    },
   ]);
 };

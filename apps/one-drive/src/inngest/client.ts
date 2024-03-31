@@ -75,6 +75,16 @@ export const inngest = new Inngest({
         folderId: string;
       };
     };
+    'one-drive/data_protection.refresh_object.requested': {
+      data: {
+        id: string;
+        organisationId: string;
+        metadata: {
+          siteId: string;
+          driveId: string;
+        };
+      };
+    };
   }>(),
   middleware: [rateLimitMiddleware, unauthorizedMiddleware, sentryMiddleware],
   logger,
