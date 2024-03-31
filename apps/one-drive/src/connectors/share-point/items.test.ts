@@ -17,7 +17,7 @@ const folderId = 'some-folder-id';
 const items: MicrosoftDriveItem[] = Array.from({ length: 5 }, (_, i) => ({
   id: `item-id-${i}`,
   name: `item-name-${i}`,
-  webUrl: `item-webUrl-${i}`,
+  webUrl: `http://webUrl-${i}.somedomain.net`,
   createdBy: {
     user: {
       displayName: `some-display-name-${i}`,

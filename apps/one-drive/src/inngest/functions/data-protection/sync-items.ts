@@ -115,9 +115,15 @@ export const getItemsWithPermisionsFromChunks = async ({
   return itemsWithPermisions;
 };
 
-export const formatDataProtetionItems = (
-  itemsWithPermisions: ItemsWithPermisions[]
-): DataProtectionObject[] => {
+export const formatDataProtetionItems = ({
+  itemsWithPermisions,
+  siteId,
+  driveId,
+}: {
+  itemsWithPermisions: ItemsWithPermisions[];
+  siteId: string;
+  driveId: string;
+}): DataProtectionObject[] => {
   const dataProtection: DataProtectionObject[] = [];
 
   for (const { item, permissions } of itemsWithPermisions) {
@@ -132,6 +138,10 @@ export const formatDataProtetionItems = (
           name: item.name,
           ownerId: item.createdBy.user.id,
           url: item.webUrl,
+          metadata: {
+            siteId,
+            driveId,
+          },
           permissions: validPermissions.map(formatPermissions).flat(),
         };
 
@@ -240,9 +250,11 @@ export const syncItems = inngest.createFunction(
         driveId,
       });
 
-      const dataProtectionItems = formatDataProtetionItems(
-        itemsWithPermisions as unknown as ItemsWithPermisions[]
-      );
+      const dataProtectionItems = formatDataProtetionItems({
+        itemsWithPermisions,
+        siteId,
+        driveId,
+      });
 
       if (!dataProtectionItems.length) return;
 

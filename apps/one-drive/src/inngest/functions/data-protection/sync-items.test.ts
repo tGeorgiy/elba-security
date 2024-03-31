@@ -194,9 +194,11 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems(
-      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
-    );
+    const dataProtectionItems = formatDataProtetionItems({
+      itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
+      siteId,
+      driveId,
+    });
 
     expect(elba).toBeCalledTimes(1);
     expect(elba).toBeCalledWith({
@@ -308,9 +310,11 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems(
-      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
-    );
+    const dataProtectionItems = formatDataProtetionItems({
+      itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
+      siteId,
+      driveId,
+    });
 
     expect(elba).toBeCalledTimes(1);
     expect(elba).toBeCalledWith({
@@ -389,9 +393,11 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems(
-      itemsWithPermisionsResult as unknown as ItemsWithPermisions[]
-    );
+    const dataProtectionItems = formatDataProtetionItems({
+      itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
+      siteId,
+      driveId,
+    });
 
     expect(elba).toBeCalledTimes(1);
     expect(elba).toBeCalledWith({

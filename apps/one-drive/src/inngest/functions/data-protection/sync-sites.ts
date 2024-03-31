@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { logger } from '@elba-security/logger';
 import { Elba } from '@elba-security/sdk';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
@@ -32,7 +31,7 @@ export const syncSites = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.sync.requested' },
-  async ({ event, step }) => {
+  async ({ event, step, logger }) => {
     const { organisationId, isFirstSync, skipToken, syncStartedAt } = event.data;
 
     logger.info('Sync Start');

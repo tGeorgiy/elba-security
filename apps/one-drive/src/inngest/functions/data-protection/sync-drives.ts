@@ -1,4 +1,3 @@
-import { logger } from '@elba-security/logger';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
@@ -31,7 +30,7 @@ export const syncDrives = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/drives.sync.triggered' },
-  async ({ event, step }) => {
+  async ({ event, step, logger }) => {
     const { siteId, isFirstSync, skipToken, organisationId } = event.data;
 
     logger.info('Sync Drives');
