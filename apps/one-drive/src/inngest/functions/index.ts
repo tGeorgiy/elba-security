@@ -6,6 +6,8 @@ import { scheduleUsersSyncs } from './users/schedule-users-syncs';
 import { syncUsers } from './users/sync-users';
 import { scheduleDataProtectionSyncJobs } from './data-protection/schedule-sync-sites';
 import { refreshObject } from './data-protection/refresh-object';
+import { deleteDataProtectionItem } from './data-protection/delete-item';
+import { deleteDataProtectionItemPermissions } from './data-protection/delete-item-permission';
 
 export const inngestFunctions = [
   syncUsers,
@@ -16,4 +18,6 @@ export const inngestFunctions = [
   syncItems,
   scheduleDataProtectionSyncJobs,
   refreshObject,
+  deleteDataProtectionItem,
+  deleteDataProtectionItemPermissions,
 ];

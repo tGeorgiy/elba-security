@@ -4,7 +4,7 @@ import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
 
 export const scheduleDataProtectionSyncJobs = inngest.createFunction(
-  { id: 'dropbox-schedule-folders-and-files-sync' },
+  { id: 'one-drive-schedule-folders-and-files-sync' },
   { cron: env.MICROSOFT_DATA_PROTECTION_CRON_SYNC },
   async ({ step }) => {
     const syncStartedAt = Date.now();
