@@ -85,6 +85,27 @@ export const inngest = new Inngest({
         };
       };
     };
+    'one-drive/data_protection.delete_object.requested': {
+      data: {
+        id: string;
+        organisationId: string;
+        metadata: {
+          siteId: string;
+          driveId: string;
+        };
+      };
+    };
+    'one-drive/data_protection.delete_object_permission.requested': {
+      data: {
+        id: string;
+        organisationId: string;
+        metadata: {
+          siteId: string;
+          driveId: string;
+        };
+        permissionId: string;
+      };
+    };
   }>(),
   middleware: [rateLimitMiddleware, unauthorizedMiddleware, sentryMiddleware],
   logger,
