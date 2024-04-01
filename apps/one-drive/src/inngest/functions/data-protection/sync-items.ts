@@ -7,10 +7,10 @@ import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import type { MicrosoftDriveItem } from '../../../connectors/share-point/items';
-import { getItems } from '../../../connectors/share-point/items';
-import type { MicrosoftDriveItemPermissions } from '../../../connectors/share-point/permissions';
-import { getAllItemPermissions } from '../../../connectors/share-point/permissions';
+import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
+import { getItems } from '@/connectors/share-point/items';
+import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
+import { getAllItemPermissions } from '@/connectors/share-point/permissions';
 
 export type ItemsWithPermisions = {
   item: MicrosoftDriveItem;

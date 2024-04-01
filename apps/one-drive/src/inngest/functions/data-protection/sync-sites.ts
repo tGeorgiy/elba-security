@@ -6,7 +6,7 @@ import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getSites } from '../../../connectors/share-point/sites';
+import { getSites } from '@/connectors/share-point/sites';
 
 export const syncSites = inngest.createFunction(
   {

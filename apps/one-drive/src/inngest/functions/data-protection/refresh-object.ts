@@ -6,8 +6,8 @@ import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getAllItemPermissions } from '../../../connectors/share-point/permissions';
-import { getItem } from '../../../connectors/share-point/get-item';
+import { getAllItemPermissions } from '@/connectors/share-point/permissions';
+import { getItem } from '@/connectors/share-point/get-item';
 import { formatDataProtetionItems } from './sync-items';
 
 export const refreshObject = inngest.createFunction(
