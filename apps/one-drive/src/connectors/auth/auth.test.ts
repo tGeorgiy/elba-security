@@ -3,8 +3,8 @@
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
 import { env } from '@/env';
+import { MicrosoftError } from '@/common/error';
 import { server } from '../../../vitest/setup-msw-handlers';
-import { MicrosoftError } from '../../common/error';
 import { getToken } from './auth';
 
 const token = 'token-1234';

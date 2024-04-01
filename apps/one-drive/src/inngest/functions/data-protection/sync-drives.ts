@@ -5,7 +5,7 @@ import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import { getDrives } from '../../../connectors/share-point/drives';
+import { getDrives } from '@/connectors/share-point/drives';
 
 export const syncDrives = inngest.createFunction(
   {
