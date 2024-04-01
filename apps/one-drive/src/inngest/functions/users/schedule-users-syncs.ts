@@ -1,7 +1,7 @@
 import { env } from '@/env';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { inngest } from '../../client';
+import { inngest } from '@/inngest/client';
 
 export const scheduleUsersSyncs = inngest.createFunction(
   { id: 'one-drive-schedule-users-syncs' },

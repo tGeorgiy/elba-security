@@ -1,10 +1,7 @@
 import { z } from 'zod';
 import { env } from '@/env';
-import { MicrosoftError } from '../../common/error';
-import {
-  getNextSkipTokenFromNextLink,
-  type MicrosoftPaginatedResponse,
-} from '../../common/pagination';
+import { MicrosoftError } from '@/common/error';
+import { getNextSkipTokenFromNextLink, type MicrosoftPaginatedResponse } from '@/common/pagination';
 
 const userSchema = z.object({
   id: z.string(),

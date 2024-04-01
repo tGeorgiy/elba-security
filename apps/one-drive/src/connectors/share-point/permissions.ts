@@ -1,9 +1,9 @@
 import { logger } from '@elba-security/logger';
 import { z } from 'zod';
 import { env } from '@/env';
-import { MicrosoftError } from '../../common/error';
-import type { MicrosoftPaginatedResponse } from '../../common/pagination';
-import { getNextSkipTokenFromNextLink } from '../../common/pagination';
+import { MicrosoftError } from '@/common/error';
+import type { MicrosoftPaginatedResponse } from '@/common/pagination';
+import { getNextSkipTokenFromNextLink } from '@/common/pagination';
 
 const grantedUserSchema = z.object({
   displayName: z.string(),
