@@ -9,7 +9,7 @@ import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
 import * as permissionsConnector from '@/connectors/share-point/permissions';
 import { env } from '@/env';
-import { refreshObject } from './refresh-object';
+import { refreshItem } from './refresh-item';
 import { formatDataProtetionItems } from './sync-items';
 
 const token = 'test-token';
@@ -70,7 +70,7 @@ const setupData = {
 };
 
 const setup = createInngestFunctionMock(
-  refreshObject,
+  refreshItem,
   'one-drive/data_protection.refresh_object.requested'
 );
 
