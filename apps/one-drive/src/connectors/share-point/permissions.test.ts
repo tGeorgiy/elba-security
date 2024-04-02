@@ -1,10 +1,11 @@
 import { http } from 'msw';
-import { describe, expect, test, beforeEach } from 'vitest';
+import { describe, expect, test, beforeEach, vi } from 'vitest';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 import { server } from '../../../vitest/setup-msw-handlers';
 import type { MicrosoftDriveItemPermissions } from './permissions';
-import { getItemPermissions } from './permissions';
+import { getAllItemPermissions, getItemPermissions } from './permissions';
+import * as getPermissionsConnector from './permissions';
 
 const validToken = 'token-1234';
 const startSkipToken = 'start-skip-token';
@@ -153,5 +154,26 @@ describe('permissions connector', () => {
         skipToken: null,
       })
     ).rejects.toBeInstanceOf(MicrosoftError);
+  });
+
+  test('should run getAllItemPermissions', async () => {
+    vi.spyOn(getPermissionsConnector, 'getAllItemPermissions').mockResolvedValue({
+      permissions,
+      nextSkipToken: null,
+    });
+
+    await expect(
+      getAllItemPermissions({
+        token: validToken,
+        siteId,
+        driveId,
+        itemId,
+      })
+    ).resolves.toStrictEqual({
+      permissions,
+      nextSkipToken: null,
+    });
+
+    expect(getAllItemPermissions).toBeCalledTimes(1);
   });
 });

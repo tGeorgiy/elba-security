@@ -10,7 +10,7 @@ import { getAllItemPermissions } from '@/connectors/share-point/permissions';
 import { getItem } from '@/connectors/share-point/get-item';
 import { formatDataProtetionItems } from './sync-items';
 
-export const refreshObject = inngest.createFunction(
+export const refreshItem = inngest.createFunction(
   {
     id: 'refresh-data-protection-objects',
     concurrency: {

@@ -5,7 +5,7 @@ import { refreshToken } from './token/refresh-token';
 import { scheduleUsersSyncs } from './users/schedule-users-syncs';
 import { syncUsers } from './users/sync-users';
 import { scheduleDataProtectionSyncJobs } from './data-protection/schedule-sync-sites';
-import { refreshObject } from './data-protection/refresh-object';
+import { refreshItem } from './data-protection/refresh-item';
 import { deleteDataProtectionItem } from './data-protection/delete-item';
 import { deleteDataProtectionItemPermissions } from './data-protection/delete-item-permission';
 
@@ -17,7 +17,7 @@ export const inngestFunctions = [
   syncDrives,
   syncItems,
   scheduleDataProtectionSyncJobs,
-  refreshObject,
+  refreshItem,
   deleteDataProtectionItem,
   deleteDataProtectionItemPermissions,
 ];
