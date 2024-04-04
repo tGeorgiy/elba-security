@@ -85,16 +85,6 @@ export const inngest = new Inngest({
         };
       };
     };
-    'one-drive/data_protection.delete_object.requested': {
-      data: {
-        id: string;
-        organisationId: string;
-        metadata: {
-          siteId: string;
-          driveId: string;
-        };
-      };
-    };
     'one-drive/data_protection.delete_object_permissions.requested': {
       data: {
         id: string;
