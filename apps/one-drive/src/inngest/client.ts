@@ -95,7 +95,7 @@ export const inngest = new Inngest({
         };
       };
     };
-    'one-drive/data_protection.delete_object_permission.requested': {
+    'one-drive/data_protection.delete_object_permissions.requested': {
       data: {
         id: string;
         organisationId: string;
@@ -103,7 +103,7 @@ export const inngest = new Inngest({
           siteId: string;
           driveId: string;
         };
-        permissionId: string;
+        permissions: string[];
       };
     };
   }>(),
