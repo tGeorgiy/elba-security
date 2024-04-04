@@ -8,13 +8,13 @@ const driveSchema = z.object({
   id: z.string(),
 });
 
-export type MicrosoftDrive = z.infer<typeof driveSchema>;
-
-export type GetDrivesParams = {
+type GetDrivesParams = {
   token: string;
   siteId: string;
   skipToken: string | null;
 };
+
+export type MicrosoftDrive = z.infer<typeof driveSchema>;
 
 export const getDrives = async ({ token, siteId, skipToken }: GetDrivesParams) => {
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives`);

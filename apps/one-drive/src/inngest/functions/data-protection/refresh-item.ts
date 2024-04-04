@@ -7,7 +7,7 @@ import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
 import { getAllItemPermissions } from '@/connectors/share-point/permissions';
-import { getItem } from '@/connectors/share-point/get-item';
+import { getItem } from '@/connectors/share-point/item';
 import { formatDataProtetionItems } from './sync-items';
 
 export const refreshItem = inngest.createFunction(
