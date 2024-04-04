@@ -28,8 +28,6 @@ export const deleteItemPermission = async ({
   });
 
   if (!response.ok) {
-    if (response.status === 404) return;
-
     throw new MicrosoftError('Could not delete item permission', { response });
   }
 };

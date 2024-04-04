@@ -30,7 +30,6 @@ describe('delete-item-permission connector', () => {
             } else if (params.itemId !== itemId) {
               return new Response(undefined, { status: 404 });
             }
-
             // eslint-disable-next-line @typescript-eslint/no-unsafe-return, @typescript-eslint/no-unsafe-call -- convenience
             return Response.json({ status: 200 });
           }
@@ -73,7 +72,7 @@ describe('delete-item-permission connector', () => {
       ).rejects.toBeInstanceOf(MicrosoftError);
     });
 
-    test('should return when the itemId is invalid and not to throw error', async () => {
+    test('should throws when the itemId is invalid', async () => {
       await expect(
         deleteItemPermission({
           token: validToken,
@@ -82,17 +81,7 @@ describe('delete-item-permission connector', () => {
           itemId: 'invalid-itemId',
           permissionId,
         })
-      ).resolves.not.toBeInstanceOf(MicrosoftError);
-
-      await expect(
-        deleteItemPermission({
-          token: validToken,
-          siteId,
-          driveId,
-          itemId: 'invalid-itemId',
-          permissionId,
-        })
-      ).resolves.toStrictEqual(undefined);
+      ).rejects.toBeInstanceOf(MicrosoftError);
     });
 
     test('should throws when the permissionId is invalid', async () => {

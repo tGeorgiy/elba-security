@@ -19,6 +19,7 @@ const itemId = 'some-item-id';
 const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const permissionId = 'some-permissionId-id';
+const permissions = ['some-permissionId-id'];
 
 describe('deleteObjectPermissions', () => {
   beforeEach(async () => {
@@ -48,19 +49,17 @@ describe('deleteObjectPermissions', () => {
     expect(response.status).toBe(200);
 
     expect(send).toBeCalledTimes(1);
-    expect(send).toBeCalledWith([
-      {
-        name: 'one-drive/data_protection.delete_object_permission.requested',
-        data: {
-          id: itemId,
-          organisationId: organisation.id,
-          metadata: {
-            siteId,
-            driveId,
-          },
-          permissionId,
+    expect(send).toBeCalledWith({
+      name: 'one-drive/data_protection.delete_object_permissions.requested',
+      data: {
+        id: itemId,
+        organisationId: organisation.id,
+        metadata: {
+          siteId,
+          driveId,
         },
+        permissions,
       },
-    ]);
+    });
   });
 });
