@@ -5,6 +5,7 @@ import * as deleteItemPermisionConnector from '@/connectors/share-point/delete-i
 import { organisationsTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
+import { MicrosoftError } from '@/common/error';
 import { deleteDataProtectionItemPermissions } from './delete-item-permission';
 
 const token = 'test-token';
@@ -12,7 +13,8 @@ const token = 'test-token';
 const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const itemId = 'some-item-id';
-const permissionId = 'some-permission-id';
+const notFoundPermissionId = 'not-found-permission-id';
+const unexpectedFailedPermissionsId = 'unexpected-failed-permission-id';
 
 const organisation = {
   id: '45a76301-f1dd-4a77-b12f-9d7d3fca3c90',
@@ -21,6 +23,11 @@ const organisation = {
   region: 'us',
 };
 
+const permissions: string[] = Array.from({ length: 5 }, (_, i) => `some-permission-id-${i}`);
+
+const notFoundPermissionArray = [...permissions, notFoundPermissionId];
+const unexpectedFailedPermissionsArray = [...permissions, unexpectedFailedPermissionsId];
+
 const setupData = {
   id: itemId,
   organisationId: organisation.id,
@@ -28,12 +35,12 @@ const setupData = {
     siteId,
     driveId,
   },
-  permissionId,
+  permissions,
 };
 
 const setup = createInngestFunctionMock(
   deleteDataProtectionItemPermissions,
-  'one-drive/data_protection.delete_object_permission.requested'
+  'one-drive/data_protection.delete_object_permissions.requested'
 );
 
 describe('delete-object', () => {
@@ -55,23 +62,109 @@ describe('delete-object', () => {
     expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(0);
   });
 
-  test('should delete object when item exists', async () => {
+  test('should delete object when item exists and return deleted permissions', async () => {
     vi.spyOn(deleteItemPermisionConnector, 'deleteItemPermission').mockResolvedValue();
 
     const [result, { step }] = setup(setupData);
 
     await expect(result).resolves.toStrictEqual({
-      status: 'completed',
+      deletedPermissions: permissions,
+      notFoundPermissions: [],
+      unexpectedFailedPermissions: [],
     });
 
-    expect(step.run).toBeCalledTimes(1);
-    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(1);
-    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledWith({
-      token,
-      itemId,
-      siteId,
-      driveId,
-      permissionId,
+    expect(step.run).toBeCalledTimes(permissions.length);
+    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(permissions.length);
+
+    for (let i = 0; i < permissions.length; i++) {
+      const permissionId = permissions[i];
+      expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
+        token,
+        itemId,
+        siteId,
+        driveId,
+        permissionId,
+      });
+    }
+  });
+
+  test('should delete object when item exists and return deleted permissions and not found permission', async () => {
+    vi.spyOn(deleteItemPermisionConnector, 'deleteItemPermission').mockImplementation(
+      ({ permissionId }) => {
+        if (permissionId === notFoundPermissionId) {
+          return Promise.reject(
+            new MicrosoftError('Could not delete item permission', {
+              response: new Response(undefined, { status: 404 }),
+            })
+          );
+        }
+        return Promise.resolve();
+      }
+    );
+
+    const [result, { step }] = setup({
+      ...setupData,
+      permissions: notFoundPermissionArray,
     });
+
+    await expect(result).resolves.toStrictEqual({
+      deletedPermissions: permissions,
+      notFoundPermissions: [notFoundPermissionId],
+      unexpectedFailedPermissions: [],
+    });
+
+    expect(step.run).toBeCalledTimes(notFoundPermissionArray.length);
+    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(
+      notFoundPermissionArray.length
+    );
+
+    for (let i = 0; i < notFoundPermissionArray.length; i++) {
+      const permissionId = notFoundPermissionArray[i];
+      expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
+        token,
+        itemId,
+        siteId,
+        driveId,
+        permissionId,
+      });
+    }
+  });
+
+  test('should delete object when item exists and return deleted permissions and unexpectedFailedPermissions', async () => {
+    vi.spyOn(deleteItemPermisionConnector, 'deleteItemPermission').mockImplementation(
+      ({ permissionId }) => {
+        if (permissionId === unexpectedFailedPermissionsId) {
+          return Promise.reject(new Error('Could not delete item permission'));
+        }
+        return Promise.resolve();
+      }
+    );
+
+    const [result, { step }] = setup({
+      ...setupData,
+      permissions: unexpectedFailedPermissionsArray,
+    });
+
+    await expect(result).resolves.toStrictEqual({
+      deletedPermissions: permissions,
+      notFoundPermissions: [],
+      unexpectedFailedPermissions: [unexpectedFailedPermissionsId],
+    });
+
+    expect(step.run).toBeCalledTimes(unexpectedFailedPermissionsArray.length);
+    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(
+      unexpectedFailedPermissionsArray.length
+    );
+
+    for (let i = 0; i < unexpectedFailedPermissionsArray.length; i++) {
+      const permissionId = unexpectedFailedPermissionsArray[i];
+      expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
+        token,
+        itemId,
+        siteId,
+        driveId,
+        permissionId,
+      });
+    }
   });
 });
