@@ -1,7 +1,7 @@
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 
-export type DeleteItemPermissionParams = {
+type DeleteItemPermissionParams = {
   itemId: string;
   token: string;
   siteId: string;

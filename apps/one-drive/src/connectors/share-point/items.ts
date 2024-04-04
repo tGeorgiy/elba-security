@@ -22,15 +22,15 @@ const driveItemSchema = z.object({
     .optional(),
 });
 
-export type MicrosoftDriveItem = z.infer<typeof driveItemSchema>;
-
-export type GetItemsParams = {
+type GetItemsParams = {
   token: string;
   siteId: string;
   driveId: string;
   folderId: string | null;
   skipToken: string | null;
 };
+
+export type MicrosoftDriveItem = z.infer<typeof driveItemSchema>;
 
 export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: GetItemsParams) => {
   const urlEnding = folderId ? `items/${folderId}/children` : 'root/children';
