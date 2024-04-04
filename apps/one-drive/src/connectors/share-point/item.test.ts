@@ -4,7 +4,7 @@ import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 import { server } from '../../../vitest/setup-msw-handlers';
 import { type MicrosoftDriveItem } from './items';
-import { getItem } from './get-item';
+import { getItem } from './item';
 
 const validToken = 'token-1234';
 

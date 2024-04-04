@@ -81,17 +81,15 @@ export const validateAndParsePermission = (
   return null;
 };
 
-export type MicrosoftDriveItemPermissions = z.infer<typeof basePSchema>;
-
-export type DriveUserSchema = z.infer<typeof grantedUserSchema>;
-
-export type GetPermissionsParams = {
+type GetPermissionsParams = {
   token: string;
   siteId: string;
   driveId: string;
   itemId: string;
   skipToken?: string | null;
 };
+
+export type MicrosoftDriveItemPermissions = z.infer<typeof basePSchema>;
 
 export const getAllItemPermissions = async ({
   token,

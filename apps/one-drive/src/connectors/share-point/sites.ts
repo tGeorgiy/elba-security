@@ -7,12 +7,12 @@ const siteSchema = z.object({
   id: z.string(),
 });
 
-export type MicrosoftSite = z.infer<typeof siteSchema>;
-
-export type GetSitesParams = {
+type GetSitesParams = {
   token: string;
   skipToken: string | null;
 };
+
+export type MicrosoftSite = z.infer<typeof siteSchema>;
 
 export const getSites = async ({ token, skipToken }: GetSitesParams) => {
   const url = new URL(`${env.MICROSOFT_API_URL}/sites`);

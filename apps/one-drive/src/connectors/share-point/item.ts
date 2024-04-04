@@ -2,7 +2,7 @@ import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 import type { MicrosoftDriveItem } from './items';
 
-export type GetItemParams = {
+type GetItemParams = {
   itemId: string;
   token: string;
   siteId: string;
