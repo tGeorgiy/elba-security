@@ -96,6 +96,30 @@ export const inngest = new Inngest({
         permissions: string[];
       };
     };
+    'one-drive/drives.subscription.triggered': {
+      data: {
+        organisationId: string;
+        siteId: string;
+        driveId: string;
+      };
+    };
+    'one-drive/data_protection.initialize_delta.requested': {
+      data: {
+        organisationId: string;
+        siteId: string;
+        driveId: string;
+        skipToken: string | null;
+      };
+    };
+    'one-drive/update-items.triggered': {
+      data: {
+        siteId: string;
+        driveId: string;
+        subscriptionId: string;
+        tenantId: string;
+        skipToken: string | null;
+      };
+    };
   }>(),
   middleware: [rateLimitMiddleware, unauthorizedMiddleware, sentryMiddleware],
   logger,
