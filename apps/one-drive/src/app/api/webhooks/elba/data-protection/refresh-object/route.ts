@@ -1,7 +1,12 @@
 import { NextResponse } from 'next/server';
 import { parseWebhookEventData } from '@elba-security/sdk';
 import { z } from 'zod';
+import { env } from '@/env';
 import { refreshObject } from './service';
+
+export const preferredRegion = env.VERCEL_PREFERRED_REGION;
+export const runtime = 'edge';
+export const dynamic = 'force-dynamic';
 
 const baseSchema = z.object({
   id: z.string(),

@@ -20,7 +20,7 @@ export const inngest = new Inngest({
         organisationId: string;
       };
     };
-    'one-drive/one-drive.elba_app.uninstalled': {
+    'one-drive/app.uninstalled.requested': {
       data: {
         organisationId: string;
       };

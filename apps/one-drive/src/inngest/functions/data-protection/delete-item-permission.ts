@@ -16,7 +16,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -27,15 +27,13 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.delete_object_permissions.requested' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const {
       id: itemId,
       organisationId,
       metadata: { siteId, driveId },
       permissions,
     } = event.data;
-
-    logger.info('Delete Start');
 
     const [organisation] = await db
       .select({
@@ -51,7 +49,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     const token = await decrypt(organisation.token);
 
     const permissionDeletionResults = await Promise.allSettled(
-      permissions.map((p) =>
+      permissions.map((permissionId) =>
         step.run('delete-item-permission', async () => {
           try {
             await deleteItemPermission({
@@ -59,13 +57,13 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
               siteId,
               driveId,
               itemId,
-              permissionId: p,
+              permissionId,
             });
 
-            return { status: 204, permissionId: p };
+            return { status: 204, permissionId };
             /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- Start of error handling */
           } catch (error: any) {
-            if (error.response.status === 404) return { status: 404, permissionId: p };
+            if (error.response.status === 404) return { status: 404, permissionId };
 
             throw error;
           }
@@ -82,7 +80,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
       (acc, el, index) => {
         if (el.status === 'fulfilled') {
           if (el.value.status === 204) acc.deletedPermissions.push(el.value.permissionId);
-          else if (el.value.status === 404) acc.notFoundPermissions.push(el.value.permissionId);
+          if (el.value.status === 404) acc.notFoundPermissions.push(el.value.permissionId);
         }
         if (el.status === 'rejected') {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- can't be undefined

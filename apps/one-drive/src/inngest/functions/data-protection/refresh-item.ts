@@ -1,6 +1,5 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { Elba } from '@elba-security/sdk';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
@@ -8,6 +7,7 @@ import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
 import { getAllItemPermissions } from '@/connectors/share-point/permissions';
 import { getItem } from '@/connectors/share-point/item';
+import { getElbaClient } from '@/connectors/elba/client';
 import { formatDataProtetionItems } from './sync-items';
 
 export const refreshItem = inngest.createFunction(
@@ -19,7 +19,7 @@ export const refreshItem = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -30,14 +30,12 @@ export const refreshItem = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.refresh_object.requested' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const {
       id: itemId,
       organisationId,
       metadata: { siteId, driveId },
     } = event.data;
-
-    logger.info('Refresh Start');
 
     const [organisation] = await db
       .select({
@@ -54,12 +52,7 @@ export const refreshItem = inngest.createFunction(
     await step.run('get-item-permissions', async () => {
       const token = await decrypt(organisation.token);
 
-      const elba = new Elba({
-        organisationId,
-        apiKey: env.ELBA_API_KEY,
-        baseUrl: env.ELBA_API_BASE_URL,
-        region: organisation.region,
-      });
+      const elba = getElbaClient({ organisationId, region: organisation.region });
 
       const [item, { permissions }] = await Promise.all([
         getItem({ token, siteId, driveId, itemId }),
@@ -75,24 +68,25 @@ export const refreshItem = inngest.createFunction(
         await elba.dataProtection.deleteObjects({
           ids: [itemId],
         });
-      } else {
-        const dataProtectionItem = formatDataProtetionItems({
-          itemsWithPermisions: [
-            {
-              item,
-              permissions,
-            },
-          ],
-          siteId,
-          driveId,
-        });
-
-        if (!dataProtectionItem.length) return;
-
-        await elba.dataProtection.updateObjects({
-          objects: dataProtectionItem,
-        });
+        return;
       }
+
+      const dataProtectionItem = formatDataProtetionItems({
+        itemsWithPermisions: [
+          {
+            item,
+            permissions,
+          },
+        ],
+        siteId,
+        driveId,
+      });
+
+      if (!dataProtectionItem.length) return;
+
+      await elba.dataProtection.updateObjects({
+        objects: dataProtectionItem,
+      });
     });
 
     return {

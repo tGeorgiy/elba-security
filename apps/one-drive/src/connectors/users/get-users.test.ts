@@ -3,8 +3,8 @@ import { describe, expect, test, beforeEach } from 'vitest';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 import { server } from '../../../vitest/setup-msw-handlers';
-import { getUsers } from './users';
-import type { MicrosoftUser } from './users';
+import { getUsers } from './get-users';
+import type { MicrosoftUser } from './get-users';
 
 const validToken = 'token-1234';
 const startSkipToken = 'start-skip-token';
