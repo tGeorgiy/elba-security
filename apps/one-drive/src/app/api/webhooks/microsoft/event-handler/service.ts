@@ -66,7 +66,7 @@ const parseResourceString = (resourse: string, getFields: SelectFieldsType): Par
 };
 
 export const handleWebhook = async (data: WebhookResponse<SubscriptionPayload>) => {
-  console.log('HANDLE_WEBHOOK');
+  // console.log('HANDLE_WEBHOOK');
   await inngest.send(
     data.value.map((payload) => {
       const { siteId, driveId } = parseResourceString(payload.resource, selectFields);
