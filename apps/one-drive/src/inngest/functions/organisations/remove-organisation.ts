@@ -3,7 +3,7 @@ import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { env } from '@/env';
 import { organisationsTable } from '@/database/schema';
-import { createElbaClient } from '@/connectors/elba/client';
+import { getElbaClient } from '@/connectors/elba/client';
 import { inngest } from '@/inngest/client';
 
 export const removeOrganisation = inngest.createFunction(
@@ -15,7 +15,7 @@ export const removeOrganisation = inngest.createFunction(
     retries: env.REMOVE_ORGANISATION_MAX_RETRY,
   },
   {
-    event: 'one-drive/one-drive.elba_app.uninstalled',
+    event: 'one-drive/app.uninstalled.requested',
   },
   async ({ event }) => {
     const { organisationId } = event.data;
@@ -30,7 +30,7 @@ export const removeOrganisation = inngest.createFunction(
       throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
     }
 
-    const elba = createElbaClient(organisationId, organisation.region);
+    const elba = getElbaClient({ organisationId, region: organisation.region });
 
     await elba.connectionStatus.update({ hasError: true });
 

@@ -1,12 +1,12 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { Elba } from '@elba-security/sdk';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
 import { getSites } from '@/connectors/share-point/sites';
+import { getElbaClient } from '@/connectors/elba/client';
 
 export const syncSites = inngest.createFunction(
   {
@@ -20,7 +20,7 @@ export const syncSites = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -31,10 +31,8 @@ export const syncSites = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.sync.requested' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const { organisationId, isFirstSync, skipToken, syncStartedAt } = event.data;
-
-    logger.info('Sync Start');
 
     const [organisation] = await db
       .select({
@@ -56,8 +54,6 @@ export const syncSites = inngest.createFunction(
 
       return result;
     });
-
-    logger.info('SITE SYNC DRIVES');
 
     if (sites.length) {
       const eventsWait = sites.map(({ id }) => {
@@ -85,7 +81,6 @@ export const syncSites = inngest.createFunction(
     }
 
     if (nextSkipToken) {
-      logger.info('SITE PAGINATE');
       await step.sendEvent('sync-next-sites-page', {
         name: 'one-drive/data_protection.sync.requested',
         data: {
@@ -102,14 +97,7 @@ export const syncSites = inngest.createFunction(
     }
 
     await step.run('elba-permissions-delete', async () => {
-      logger.info('🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀🚀 ~ elba-permissions-delete');
-
-      const elba = new Elba({
-        organisationId,
-        apiKey: env.ELBA_API_KEY,
-        baseUrl: env.ELBA_API_BASE_URL,
-        region: organisation.region,
-      });
+      const elba = getElbaClient({ organisationId, region: organisation.region });
 
       await elba.dataProtection.deleteObjects({
         syncedBefore: new Date(syncStartedAt).toISOString(),

@@ -1,5 +1,4 @@
 import type { DataProtectionObject, DataProtectionObjectPermission } from '@elba-security/sdk';
-import { Elba } from '@elba-security/sdk';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
@@ -11,6 +10,7 @@ import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
 import { getItems } from '@/connectors/share-point/items';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
 import { getAllItemPermissions } from '@/connectors/share-point/permissions';
+import { getElbaClient } from '@/connectors/elba/client';
 
 export type ItemsWithPermisions = {
   item: MicrosoftDriveItem;
@@ -165,7 +165,7 @@ export const syncItems = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -176,10 +176,8 @@ export const syncItems = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/items.sync.triggered' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const { siteId, driveId, isFirstSync, folderId, skipToken, organisationId } = event.data;
-
-    logger.info('Sync Items');
 
     const [organisation] = await db
       .select({
@@ -258,12 +256,7 @@ export const syncItems = inngest.createFunction(
 
       if (!dataProtectionItems.length) return;
 
-      const elba = new Elba({
-        organisationId,
-        apiKey: env.ELBA_API_KEY,
-        baseUrl: env.ELBA_API_BASE_URL,
-        region: organisation.region,
-      });
+      const elba = getElbaClient({ organisationId, region: organisation.region });
 
       await elba.dataProtection.updateObjects({
         objects: dataProtectionItems,
@@ -271,8 +264,6 @@ export const syncItems = inngest.createFunction(
     });
 
     if (nextSkipToken) {
-      logger.info('ITEMS PAGINATION');
-
       await step.sendEvent('sync-next-items-page', {
         name: 'one-drive/items.sync.triggered',
         data: {

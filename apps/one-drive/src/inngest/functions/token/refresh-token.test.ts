@@ -4,7 +4,7 @@ import { NonRetriableError } from 'inngest';
 import { eq } from 'drizzle-orm';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import * as authConnector from '@/connectors/auth/auth';
+import * as authConnector from '@/connectors/auth/get-token';
 import { decrypt, encrypt } from '@/common/crypto';
 import { refreshToken } from './refresh-token';
 

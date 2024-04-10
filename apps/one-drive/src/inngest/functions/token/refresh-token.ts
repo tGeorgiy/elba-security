@@ -5,9 +5,9 @@ import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import { getToken } from '@/connectors/auth/auth';
 import { env } from '@/env';
 import { encrypt } from '@/common/crypto';
+import { getToken } from '@/connectors/auth/get-token';
 
 export const refreshToken = inngest.createFunction(
   {
@@ -18,7 +18,7 @@ export const refreshToken = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {

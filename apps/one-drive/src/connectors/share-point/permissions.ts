@@ -70,7 +70,8 @@ export const validateAndParsePermission = (
         ...result.data,
         grantedToV2: grantedToV2ParseResult.data,
       };
-    } else if (grantedToIdentitiesV2ParseResult.success) {
+    }
+    if (grantedToIdentitiesV2ParseResult.success) {
       return {
         ...result.data,
         grantedToIdentitiesV2: grantedToIdentitiesV2ParseResult.data,

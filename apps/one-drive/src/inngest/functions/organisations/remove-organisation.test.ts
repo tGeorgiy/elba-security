@@ -14,10 +14,7 @@ const organisation = {
   region: 'us',
 };
 
-const setup = createInngestFunctionMock(
-  removeOrganisation,
-  'one-drive/one-drive.elba_app.uninstalled'
-);
+const setup = createInngestFunctionMock(removeOrganisation, 'one-drive/app.uninstalled.requested');
 
 describe('remove-organisation', () => {
   test("should not remove given organisation when it's not registered", async () => {

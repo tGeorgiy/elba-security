@@ -5,7 +5,7 @@ import { describe, expect, test, beforeEach } from 'vitest';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
 import { server } from '../../../vitest/setup-msw-handlers';
-import { getToken } from './auth';
+import { getToken } from './get-token';
 
 const token = 'token-1234';
 const expiresIn = 60;

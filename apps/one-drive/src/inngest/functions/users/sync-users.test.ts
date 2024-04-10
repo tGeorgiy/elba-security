@@ -5,8 +5,8 @@ import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { env } from '@/env';
 import { encrypt } from '@/common/crypto';
-import type { MicrosoftUser } from '@/connectors/users/users';
-import * as usersConnector from '@/connectors/users/users';
+import type { MicrosoftUser } from '@/connectors/users/get-users';
+import * as usersConnector from '@/connectors/users/get-users';
 import { syncUsers } from './sync-users';
 
 const token = 'test-token';

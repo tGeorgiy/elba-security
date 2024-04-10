@@ -19,7 +19,7 @@ export const syncDrives = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -30,10 +30,8 @@ export const syncDrives = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/drives.sync.triggered' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const { siteId, isFirstSync, skipToken, organisationId } = event.data;
-
-    logger.info('Sync Drives');
 
     const [organisation] = await db
       .select({

@@ -104,7 +104,7 @@ describe('unauthorized middleware', () => {
 
     expect(send).toBeCalledTimes(1);
     expect(send).toBeCalledWith({
-      name: 'one-drive/one-drive.elba_app.uninstalled',
+      name: 'one-drive/app.uninstalled.requested',
       data: {
         organisationId: organisation.id,
       },
