@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   const data = (await req.json()) as WebhookResponse<SubscriptionPayload>;
 
-  console.log('🚀 ~ POST ~ data:', data);
+  // console.log('🚀 ~ POST ~ data:', data);
 
   await handleWebhook(subscriptionArray.parse(data));
 

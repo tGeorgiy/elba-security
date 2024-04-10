@@ -26,7 +26,7 @@ export const getDelta = async ({
   skipToken,
   deltaToken,
 }: GetDelta) => {
-  console.log('GET DELTAAAAAA');
+  // console.log('GET DELTAAAAAA');
 
   const url = new URL(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root/delta`

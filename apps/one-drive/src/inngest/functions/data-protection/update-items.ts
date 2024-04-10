@@ -1,4 +1,4 @@
-import { Elba } from '@elba-security/sdk';
+// import { Elba } from '@elba-security/sdk';
 import { and, eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
@@ -6,16 +6,16 @@ import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
-import { getItems } from '@/connectors/share-point/items';
+// import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
+// import { getItems } from '@/connectors/share-point/items';
 import { getDelta } from '@/connectors/share-point/get-delta';
 
-type ParseDeltaResponseType = {
-  deleted: string[];
-  updated: string[];
-};
+// type ParseDeltaResponseType = {
+//   deleted: string[];
+//   updated: string[];
+// };
 
-const parseDeltaResponse = (delta): ParseDeltaResponseType => {};
+// const parseDeltaResponse = (delta): ParseDeltaResponseType => {};
 
 export const updateItemPermissions = inngest.createFunction(
   {
@@ -77,9 +77,10 @@ export const updateItemPermissions = inngest.createFunction(
       throw new NonRetriableError(`Could not retrieve organisation with tenantId=${tenantId}`);
     }
 
-    console.log('🚀 ~ record:', record);
+    // console.log('🚀 ~ record:', record);
 
-    const { delta, nextSkipToken, newDeltaToken } = await step.run('delta - paginate', async () => {
+    // const { delta, nextSkipToken, newDeltaToken } = await step.run('delta - paginate', async () => {
+    const { nextSkipToken } = await step.run('delta - paginate', async () => {
       const result = await getDelta({
         token: await decrypt(record.token),
         siteId,

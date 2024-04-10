@@ -28,7 +28,7 @@ export const subscribeToDrive = inngest.createFunction(
   },
   { event: 'one-drive/drives.subscription.triggered' },
   async ({ event, step }) => {
-    console.log('SUB INNGEST');
+    // console.log('SUB INNGEST');
 
     const { organisationId, siteId, driveId } = event.data;
 

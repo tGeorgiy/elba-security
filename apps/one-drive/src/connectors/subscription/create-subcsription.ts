@@ -42,7 +42,7 @@ export const createSubscription = async ({
 }: CreateSubscriptionParams) => {
   const url = new URL(`${env.MICROSOFT_API_URL}/subscriptions`);
 
-  console.log('SUB CREATE');
+  // console.log('SUB CREATE');
 
   const response = await fetch(url, {
     method: 'POST',
