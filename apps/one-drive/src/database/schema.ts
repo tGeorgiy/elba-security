@@ -1,4 +1,4 @@
-import { uuid, text, timestamp, pgTable } from 'drizzle-orm/pg-core';
+import { uuid, text, timestamp, pgTable, unique } from 'drizzle-orm/pg-core';
 
 export const organisationsTable = pgTable('organisations', {
   id: uuid('id').primaryKey(),
@@ -7,3 +7,22 @@ export const organisationsTable = pgTable('organisations', {
   token: text('token').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
+
+export const sharePointTable = pgTable(
+  'share-point',
+  {
+    // id: uuid('id').primaryKey().defaultRandom(),
+    organisationId: uuid('organisation_id')
+      .references(() => organisationsTable.id)
+      .notNull(),
+    siteId: text('site_id').notNull(),
+    driveId: text('drive_id').notNull(),
+    subscriptionId: text('subscription_id').notNull(),
+    subscriptionExpirationDate: text('subscription_expiration_date').notNull(),
+    delta: text('delta').notNull(),
+    createdAt: timestamp('created_at').defaultNow().notNull(),
+  },
+  (t) => ({
+    unq: unique('unic_drive').on(t.organisationId, t.driveId),
+  })
+);
