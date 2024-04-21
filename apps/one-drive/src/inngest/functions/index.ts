@@ -7,9 +7,11 @@ import { syncUsers } from './users/sync-users';
 import { scheduleDataProtectionSyncJobs } from './data-protection/schedule-sync-sites';
 import { refreshItem } from './data-protection/refresh-item';
 import { deleteDataProtectionItemPermissions } from './data-protection/delete-item-permission';
-import { initializeDelta } from './data-protection/initialize-delta';
-import { subscribeToDrive } from './subscriptions/create-drive-subscriprion';
-import { updateItemPermissions } from './data-protection/update-items';
+import { initializeDelta } from './delta/initialize-delta';
+import { subscriptionToDrive } from './subscriptions/subscription-to-drives';
+import { updateItems } from './data-protection/update-items';
+import { subscriptionRefresh } from './subscriptions/subscription-refresh';
+import { subscriptionRemove } from './subscriptions/subscription-remove';
 
 export const inngestFunctions = [
   syncUsers,
@@ -22,6 +24,8 @@ export const inngestFunctions = [
   refreshItem,
   deleteDataProtectionItemPermissions,
   initializeDelta,
-  subscribeToDrive,
-  updateItemPermissions,
+  subscriptionToDrive,
+  subscriptionRefresh,
+  subscriptionRemove,
+  updateItems,
 ];

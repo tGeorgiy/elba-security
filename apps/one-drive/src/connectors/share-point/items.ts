@@ -50,7 +50,7 @@ export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: 
   });
 
   if (!response.ok) {
-    throw new MicrosoftError('Could not retrieve drives', { response });
+    throw new MicrosoftError('Could not retrieve items', { response });
   }
 
   const data = (await response.json()) as MicrosoftPaginatedResponse<MicrosoftDriveItem>;

@@ -15,7 +15,7 @@ export const syncDrives = inngest.createFunction(
     },
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 5,
+      limit: 1,
     },
     cancelOn: [
       {
@@ -23,7 +23,7 @@ export const syncDrives = inngest.createFunction(
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/one-drive.elba_app.installed',
+        event: 'one-drive/app.install.requested',
         match: 'data.organisationId',
       },
     ],
@@ -57,13 +57,13 @@ export const syncDrives = inngest.createFunction(
     });
 
     if (drives.length) {
-      const eventsWait = drives.map(({ id }) => {
-        return step.waitForEvent(`wait-for-items-complete-${id}`, {
+      const eventsWait = drives.map(({ id }) =>
+        step.waitForEvent(`wait-for-items-complete-${id}`, {
           event: 'one-drive/items.sync.completed',
           timeout: '1d',
           if: `async.data.organisationId == '${organisationId}' && async.data.driveId == '${id}'`,
-        });
-      });
+        })
+      );
 
       await step.sendEvent(
         'items-sync-triggered',

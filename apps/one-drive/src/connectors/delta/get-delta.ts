@@ -1,11 +1,8 @@
-import { z } from 'zod';
 import { MicrosoftError } from '@/common/error';
-import { getNextSkipTokenFromNextLink, type MicrosoftPaginatedResponse } from '@/common/pagination';
-import { getDeltaTokenFromDeltaLink } from '@/common/delta-link';
-
-const siteSchema = z.object({
-  id: z.string(),
-});
+import type { MicrosoftPaginatedResponse } from '@/common/pagination';
+import { getTokenFromDeltaLinks } from '@/common/delta-links-parse';
+import { env } from '@/env';
+import type { MicrosoftDriveItem } from '../share-point/items';
 
 type GetDelta = {
   token: string;
@@ -16,7 +13,9 @@ type GetDelta = {
   deltaToken: string | null;
 };
 
-export type MicrosoftSite = z.infer<typeof siteSchema>;
+export type Delta = {
+  deleted?: { state: string } | null;
+} & MicrosoftDriveItem;
 
 export const getDelta = async ({
   token,
@@ -26,21 +25,19 @@ export const getDelta = async ({
   skipToken,
   deltaToken,
 }: GetDelta) => {
-  // console.log('GET DELTAAAAAA');
-
-  const url = new URL(
-    `https://graph.microsoft.com/v1.0/sites/${siteId}/drives/${driveId}/root/delta`
-  );
+  const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/root/delta`);
 
   if (isFirstSync) {
     url.searchParams.append('$select', 'id');
     url.searchParams.append('$top', String(1000));
+  } else {
+    url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_SYNC_CHUNK_SIZE));
+  }
+  if (skipToken) {
+    url.searchParams.append('token', skipToken);
   }
   if (deltaToken) {
     url.searchParams.append('token', deltaToken);
-  }
-  if (skipToken) {
-    url.searchParams.append('$skiptoken', skipToken);
   }
 
   const response = await fetch(url, {
@@ -53,10 +50,10 @@ export const getDelta = async ({
     throw new MicrosoftError('Could not retrieve delta', { response });
   }
 
-  const data = (await response.json()) as MicrosoftPaginatedResponse<MicrosoftSite>;
+  const data = (await response.json()) as MicrosoftPaginatedResponse<Delta>;
 
-  const nextSkipToken = getNextSkipTokenFromNextLink(data['@odata.nextLink']);
-  const newDeltaToken = getDeltaTokenFromDeltaLink(data['@odata.deltaLink']);
+  const nextSkipToken = getTokenFromDeltaLinks(data['@odata.nextLink']);
+  const newDeltaToken = getTokenFromDeltaLinks(data['@odata.deltaLink']);
 
   return { delta: data.value, nextSkipToken, newDeltaToken };
 };
