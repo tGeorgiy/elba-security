@@ -5,23 +5,26 @@ import { organisationsTable, sharePointTable } from '@/database/schema';
 import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getDelta } from '../../../connectors/share-point/get-delta';
-import { subscribeToDrive } from '../subscriptions/create-drive-subscriprion';
+import { getDelta } from '@/connectors/delta/get-delta';
+import { subscriptionToDrive } from '../subscriptions/subscription-to-drives';
 
 export const initializeDelta = inngest.createFunction(
   {
     id: 'initialize-data-protection-delta',
     concurrency: {
-      key: 'event.data.organisationId',
-      limit: 10,
+      key: 'event.data.siteId',
+      limit: 1,
+    },
+    priority: {
+      run: 'event.data.isFirstSync ? 600 : 0',
     },
     cancelOn: [
       {
-        event: 'one-drive/one-drive.elba_app.uninstalled',
+        event: 'one-drive/app.uninstall.requested',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/one-drive.elba_app.installed',
+        event: 'one-drive/app.install.requested',
         match: 'data.organisationId',
       },
     ],
@@ -29,7 +32,7 @@ export const initializeDelta = inngest.createFunction(
   },
   { event: 'one-drive/data_protection.initialize_delta.requested' },
   async ({ event, step, logger }) => {
-    const { organisationId, siteId, driveId, skipToken } = event.data;
+    const { organisationId, siteId, driveId, isFirstSync, skipToken } = event.data;
 
     logger.info('Delta Start');
 
@@ -49,7 +52,7 @@ export const initializeDelta = inngest.createFunction(
         token: await decrypt(organisation.token),
         siteId,
         driveId,
-        isFirstSync: true,
+        isFirstSync,
         skipToken,
         deltaToken: null,
       });
@@ -58,14 +61,15 @@ export const initializeDelta = inngest.createFunction(
     });
 
     if (nextSkipToken) {
-      logger.info('SITE PAGINATE');
+      logger.info('DELTA PAGINATE');
       await step.sendEvent('sync-next-delta-page', {
         name: 'one-drive/data_protection.initialize_delta.requested',
         data: {
           organisationId,
           siteId,
           driveId,
-          skipToken,
+          isFirstSync,
+          skipToken: nextSkipToken,
         },
       });
 
@@ -75,13 +79,16 @@ export const initializeDelta = inngest.createFunction(
     }
 
     const data = await step.invoke('one-drive/drives.subscription.triggered', {
-      function: subscribeToDrive,
+      function: subscriptionToDrive,
       data: {
         organisationId,
         siteId,
         driveId,
+        isFirstSync,
       },
     });
+
+    logger.info('🚀 ~ data:', data);
 
     await db
       .insert(sharePointTable)
@@ -97,8 +104,10 @@ export const initializeDelta = inngest.createFunction(
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cant be null
-        set: { subscriptionId: data.id, delta: newDeltaToken! },
+        set: { subscriptionId: data.id, delta: newDeltaToken!, siteId },
       });
+
+    logger.info('🚀 ~ DELTA COMPLETED:');
 
     return {
       status: 'completed',

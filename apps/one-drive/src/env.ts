@@ -55,7 +55,7 @@ export const env = z
     MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY: zEnvRetry(),
     MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * 1-5'),
     SUBSCRIBE_EXPIRATION_DAYS: z.string().default('1'),
-    WEBHOOK_URL: z.string().url().default('https://9705-178-20-153-149.ngrok-free.app/'),
+    WEBHOOK_URL: z.string().url(),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),
     ELBA_REDIRECT_URL: z.string().url(),

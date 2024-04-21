@@ -17,8 +17,6 @@ const baseSchema = z.object({
   }),
 });
 
-export type RefreshDataProtectionObjectSchema = z.infer<typeof baseSchema>;
-
 export async function POST(request: Request) {
   const data: unknown = await request.json();
 

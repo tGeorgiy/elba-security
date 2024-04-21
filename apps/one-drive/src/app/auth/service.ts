@@ -33,7 +33,7 @@ export const setupOrganisation = async ({
 
   await inngest.send([
     {
-      name: 'one-drive/one-drive.elba_app.installed',
+      name: 'one-drive/app.install.requested',
       data: {
         organisationId,
       },

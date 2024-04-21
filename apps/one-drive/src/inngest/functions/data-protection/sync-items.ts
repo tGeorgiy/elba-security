@@ -169,7 +169,7 @@ export const syncItems = inngest.createFunction(
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/one-drive.elba_app.installed',
+        event: 'one-drive/app.uninstall.requested',
         match: 'data.organisationId',
       },
     ],
@@ -209,13 +209,13 @@ export const syncItems = inngest.createFunction(
     });
 
     if (folders.length) {
-      const eventsWait = folders.map(async ({ id }) => {
-        return step.waitForEvent(`wait-for-folders-complete-${id}`, {
+      const eventsWait = folders.map(async ({ id }) =>
+        step.waitForEvent(`wait-for-folders-complete-${id}`, {
           event: 'one-drive/foder-items.sync.completed',
           timeout: '1d',
           if: `async.data.organisationId == '${organisationId}' && async.data.folderId == '${id}'`,
-        });
-      });
+        })
+      );
 
       await step.sendEvent(
         'items.sync.triggered',
@@ -286,13 +286,25 @@ export const syncItems = inngest.createFunction(
         },
       });
     } else {
-      await step.sendEvent('items-sync-complete', {
-        name: 'one-drive/items.sync.completed',
-        data: {
-          organisationId,
-          driveId,
-        },
-      });
+      await Promise.all([
+        step.sendEvent('items-sync-complete', {
+          name: 'one-drive/items.sync.completed',
+          data: {
+            organisationId,
+            driveId,
+          },
+        }),
+        step.sendEvent('initialize-delta', {
+          name: 'one-drive/data_protection.initialize_delta.requested',
+          data: {
+            organisationId,
+            siteId,
+            driveId,
+            isFirstSync: true,
+            skipToken: null,
+          },
+        }),
+      ]);
     }
 
     return {

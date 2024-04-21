@@ -1,5 +1,5 @@
 import { inngest } from '@/inngest/client';
-import type { RefreshDataProtectionObjectSchema } from './route';
+import type { RefreshDataProtectionObjectSchema } from './types';
 
 export const refreshObject = async ({
   id,

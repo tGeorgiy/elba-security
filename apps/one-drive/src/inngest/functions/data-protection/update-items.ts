@@ -1,4 +1,3 @@
-// import { Elba } from '@elba-security/sdk';
 import { and, eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { env } from '@/env';
@@ -6,60 +5,56 @@ import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-// import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
-// import { getItems } from '@/connectors/share-point/items';
-import { getDelta } from '@/connectors/share-point/get-delta';
+import type { Delta } from '@/connectors/delta/get-delta';
+import { getDelta } from '@/connectors/delta/get-delta';
+import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
+import { createElbaClient } from '@/connectors/elba/client';
+import { MicrosoftError } from '@/common/error';
+import {
+  formatDataProtetionItems,
+  getCkunkedArray,
+  getItemsWithPermisionsFromChunks,
+} from './sync-items';
 
-// type ParseDeltaResponseType = {
-//   deleted: string[];
-//   updated: string[];
-// };
+type ParsedDelta = {
+  deleted: string[];
+  updated: MicrosoftDriveItem[];
+};
 
-// const parseDeltaResponse = (delta): ParseDeltaResponseType => {};
+export const parsedDelta = (delta: Delta[]): ParsedDelta => {
+  return delta.reduce<ParsedDelta>(
+    (acc, el) => {
+      if (el.name === 'root') return acc;
+      if (el.deleted?.state === 'deleted') acc.deleted.push(el.id);
+      else acc.updated.push(el);
 
-export const updateItemPermissions = inngest.createFunction(
+      return acc;
+    },
+    { deleted: [], updated: [] }
+  );
+};
+
+export const updateItems = inngest.createFunction(
   {
     id: 'one-drive-update-items',
-    // priority: {
-    //   run: 'event.data.isFirstSync ? 600 : 0',
-    // },
     concurrency: {
       key: 'event.data.tenantId',
       limit: env.MICROSOFT_DATA_PROTECTION_ITEMS_SYNC_CONCURRENCY,
     },
-    // cancelOn: [
-    //   {
-    //     event: 'one-drive/one-drive.elba_app.uninstalled',
-    //     match: 'data.organisationId',
-    //   },
-    //   {
-    //     event: 'one-drive/one-drive.elba_app.installed',
-    //     match: 'data.organisationId',
-    //   },
-    // ],
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/update-items.triggered' },
   async ({ event, step, logger }) => {
     const { siteId, driveId, subscriptionId, tenantId, skipToken } = event.data;
+    let itemIdsWithoutPermissions: string[] = [];
 
     logger.info('Update Items');
 
-    // const [organisation] = await db
-    //   .select({
-    //     id: organisationsTable.id,
-    //     token: organisationsTable.token,
-    //   })
-    //   .from(organisationsTable)
-    //   .where(eq(organisationsTable.tenantId, tenantId));
-
-    // if (!organisation) {
-    //   throw new NonRetriableError(`Could not retrieve organisation with tenantId=${tenantId}`);
-    // }
-
     const [record] = await db
       .select({
+        organisationId: organisationsTable.id,
         token: organisationsTable.token,
+        region: organisationsTable.region,
         delta: sharePointTable.delta,
       })
       .from(sharePointTable)
@@ -77,10 +72,7 @@ export const updateItemPermissions = inngest.createFunction(
       throw new NonRetriableError(`Could not retrieve organisation with tenantId=${tenantId}`);
     }
 
-    // console.log('🚀 ~ record:', record);
-
-    // const { delta, nextSkipToken, newDeltaToken } = await step.run('delta - paginate', async () => {
-    const { nextSkipToken } = await step.run('delta - paginate', async () => {
+    const { delta, nextSkipToken, newDeltaToken } = await step.run('delta paginate', async () => {
       const result = await getDelta({
         token: await decrypt(record.token),
         siteId,
@@ -93,82 +85,52 @@ export const updateItemPermissions = inngest.createFunction(
       return result;
     });
 
-    // const token = await decrypt(organisation.token);
+    const { deleted, updated } = parsedDelta(delta);
 
-    // const { folders, files, nextSkipToken } = await step.run('paginate', async () => {
-    //   const result = await getItems({
-    //     token,
-    //     siteId,
-    //     driveId,
-    //     folderId,
-    //     skipToken,
-    //   });
+    const elba = createElbaClient(record.organisationId, record.region);
 
-    //   return {
-    //     ...groupItems(result.items),
-    //     nextSkipToken: result.nextSkipToken,
-    //   };
-    // });
+    if (updated.length) {
+      itemIdsWithoutPermissions = await step.run('update elba items', async () => {
+        const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
+          updated,
+          env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
+        );
 
-    // if (folders.length) {
-    //   const eventsWait = folders.map(async ({ id }) => {
-    //     return step.waitForEvent(`wait-for-folders-complete-${id}`, {
-    //       event: 'one-drive/foder-items.sync.completed',
-    //       timeout: '1d',
-    //       if: `async.data.organisationId == '${organisationId}' && async.data.folderId == '${id}'`,
-    //     });
-    //   });
+        const itemsWithPermisions = await getItemsWithPermisionsFromChunks({
+          itemsChunks,
+          token: await decrypt(record.token),
+          siteId,
+          driveId,
+        });
 
-    //   await step.sendEvent(
-    //     'items.sync.triggered',
-    //     folders.map(({ id }) => ({
-    //       name: 'one-drive/items.sync.triggered',
-    //       data: {
-    //         siteId,
-    //         driveId,
-    //         isFirstSync,
-    //         folderId: id,
-    //         skipToken: null,
-    //         organisationId,
-    //       },
-    //     }))
-    //   );
+        const dataProtectionItems = formatDataProtetionItems({
+          itemsWithPermisions,
+          siteId,
+          driveId,
+        });
 
-    //   await Promise.all(eventsWait);
-    // }
+        if (!dataProtectionItems.length) {
+          return itemsWithPermisions.reduce<string[]>((acc, itemWithPermisions) => {
+            if (!itemWithPermisions.permissions.length) acc.push(itemWithPermisions.item.id);
+            return acc;
+          }, []);
+        }
 
-    // await step.run('get-permissions-update-elba', async () => {
-    //   const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
-    //     [...folders, ...files],
-    //     env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
-    //   );
+        await elba.dataProtection.updateObjects({
+          objects: dataProtectionItems,
+        });
 
-    //   const itemsWithPermisions = await getItemsWithPermisionsFromChunks({
-    //     itemsChunks,
-    //     token,
-    //     siteId,
-    //     driveId,
-    //   });
+        return [];
+      });
+    }
 
-    //   const dataProtectionItems = formatDataProtetionItems({
-    //     itemsWithPermisions,
-    //     siteId,
-    //     driveId,
-    //   });
-
-    //   if (!dataProtectionItems.length) return;
-
-    //   const elba = new Elba({
-    //     organisationId,
-    //     apiKey: env.ELBA_API_KEY,
-    //     baseUrl: env.ELBA_API_BASE_URL,
-    //     region: organisation.region,
-    //   });
-
-    //   await elba.dataProtection.updateObjects({
-    //     objects: dataProtectionItems,
-    //   });
-    // });
+    if ([...deleted, ...itemIdsWithoutPermissions].length) {
+      await step.run('remove elba items', async () => {
+        await elba.dataProtection.deleteObjects({
+          ids: [...deleted, ...itemIdsWithoutPermissions],
+        });
+      });
+    }
 
     if (nextSkipToken) {
       logger.info('ITEMS PAGINATION');
@@ -186,23 +148,21 @@ export const updateItemPermissions = inngest.createFunction(
       };
     }
 
-    // if (folderId) {
-    //   await step.sendEvent('folders-sync-complete', {
-    //     name: 'one-drive/foder-items.sync.completed',
-    //     data: {
-    //       organisationId,
-    //       folderId,
-    //     },
-    //   });
-    // } else {
-    //   await step.sendEvent('items-sync-complete', {
-    //     name: 'one-drive/items.sync.completed',
-    //     data: {
-    //       organisationId,
-    //       driveId,
-    //     },
-    //   });
-    // }
+    if (!newDeltaToken) throw new MicrosoftError('Delta token not found!');
+
+    await db
+      .update(sharePointTable)
+      .set({
+        delta: newDeltaToken,
+      })
+      .where(
+        and(
+          eq(sharePointTable.organisationId, record.organisationId),
+          eq(sharePointTable.siteId, siteId),
+          eq(sharePointTable.driveId, driveId),
+          eq(sharePointTable.subscriptionId, subscriptionId)
+        )
+      );
 
     return {
       status: 'completed',

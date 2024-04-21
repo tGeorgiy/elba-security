@@ -11,9 +11,8 @@ export const organisationsTable = pgTable('organisations', {
 export const sharePointTable = pgTable(
   'share-point',
   {
-    // id: uuid('id').primaryKey().defaultRandom(),
     organisationId: uuid('organisation_id')
-      .references(() => organisationsTable.id)
+      .references(() => organisationsTable.id, { onDelete: 'cascade' })
       .notNull(),
     siteId: text('site_id').notNull(),
     driveId: text('drive_id').notNull(),

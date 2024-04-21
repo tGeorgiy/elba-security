@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-const deltaTokenFromDeltaLinkSchema = z.preprocess((value) => {
+const tokenFromDeltaLinksSchema = z.preprocess((value) => {
   if (typeof value !== 'string') return null;
 
   const deltaLinkUrl = new URL(value);
@@ -8,4 +8,4 @@ const deltaTokenFromDeltaLinkSchema = z.preprocess((value) => {
 }, z.coerce.string().nullable());
 
 // eslint-disable-next-line @typescript-eslint/unbound-method -- convenience
-export const getDeltaTokenFromDeltaLink = deltaTokenFromDeltaLinkSchema.parse;
+export const getTokenFromDeltaLinks = tokenFromDeltaLinksSchema.parse;
