@@ -75,21 +75,16 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     return permissionDeletionResults.reduce<{
       deletedPermissions: string[];
       notFoundPermissions: string[];
-      unexpectedFailedPermissions: string[];
     }>(
-      (acc, el, index) => {
+      (acc, el) => {
         if (el.status === 'fulfilled') {
           if (el.value.status === 204) acc.deletedPermissions.push(el.value.permissionId);
           if (el.value.status === 404) acc.notFoundPermissions.push(el.value.permissionId);
         }
-        if (el.status === 'rejected') {
-          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- can't be undefined
-          acc.unexpectedFailedPermissions.push(permissions[index]!);
-        }
 
         return acc;
       },
-      { deletedPermissions: [], notFoundPermissions: [], unexpectedFailedPermissions: [] }
+      { deletedPermissions: [], notFoundPermissions: [] }
     );
   }
 );
