@@ -17,6 +17,24 @@ export type ItemsWithPermisions = {
   permissions: MicrosoftDriveItemPermissions[];
 };
 
+const removeInherited = (
+  parentPermissionIds: string[],
+  itemsWithPermisions: ItemsWithPermisions[]
+): ItemsWithPermisions[] => {
+  return itemsWithPermisions.reduce<ItemsWithPermisions[]>((acc, itemWithPermisions) => {
+    const filteredPermissions = itemWithPermisions.permissions.filter(
+      (permission) => !parentPermissionIds.includes(permission.id)
+    );
+
+    acc.push({
+      item: itemWithPermisions.item,
+      permissions: filteredPermissions,
+    });
+
+    return acc;
+  }, []);
+};
+
 export const groupItems = (items: MicrosoftDriveItem[]) =>
   items.reduce(
     (acc, item) => {
@@ -177,7 +195,7 @@ export const syncItems = inngest.createFunction(
   },
   { event: 'one-drive/items.sync.triggered' },
   async ({ event, step }) => {
-    const { siteId, driveId, isFirstSync, folderId, skipToken, organisationId } = event.data;
+    const { siteId, driveId, isFirstSync, folder, skipToken, organisationId } = event.data;
 
     const [organisation] = await db
       .select({
@@ -198,7 +216,7 @@ export const syncItems = inngest.createFunction(
         token,
         siteId,
         driveId,
-        folderId,
+        folderId: folder?.id || null,
         skipToken,
       });
 
@@ -225,7 +243,7 @@ export const syncItems = inngest.createFunction(
             siteId,
             driveId,
             isFirstSync,
-            folderId: id,
+            folder: { id, permissions: folder?.permissions || [] },
             skipToken: null,
             organisationId,
           },
@@ -235,11 +253,12 @@ export const syncItems = inngest.createFunction(
       await Promise.all(eventsWait);
     }
 
-    await step.run('get-permissions-update-elba', async () => {
+    const parentFolderPermissions = await step.run('get-permissions-update-elba', async () => {
       const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
         [...folders, ...files],
         env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
       );
+      const parentPermissions: string[] = [];
 
       const itemsWithPermisions = await getItemsWithPermisionsFromChunks({
         itemsChunks,
@@ -248,8 +267,22 @@ export const syncItems = inngest.createFunction(
         driveId,
       });
 
+      // Checking that we have the folder id and no permissions (it indicates that it is first run, and not a pagination)
+      if (folder?.id && !folder.permissions.length) {
+        const { permissions } = await getAllItemPermissions({
+          token,
+          siteId,
+          driveId,
+          itemId: folder.id,
+        });
+
+        parentPermissions.push(...permissions.map((el) => el.id));
+      } else if (folder?.permissions.length) {
+        parentPermissions.push(...folder.permissions);
+      }
+
       const dataProtectionItems = formatDataProtetionItems({
-        itemsWithPermisions,
+        itemsWithPermisions: removeInherited(parentPermissions, itemsWithPermisions),
         siteId,
         driveId,
       });
@@ -261,6 +294,8 @@ export const syncItems = inngest.createFunction(
       await elba.dataProtection.updateObjects({
         objects: dataProtectionItems,
       });
+
+      return parentPermissions;
     });
 
     if (nextSkipToken) {
@@ -268,6 +303,11 @@ export const syncItems = inngest.createFunction(
         name: 'one-drive/items.sync.triggered',
         data: {
           ...event.data,
+          folder: {
+            id: folder?.id || null,
+            permissions: parentFolderPermissions || [],
+          },
+
           skipToken: nextSkipToken,
         },
       });
@@ -277,12 +317,12 @@ export const syncItems = inngest.createFunction(
       };
     }
 
-    if (folderId) {
+    if (folder?.id) {
       await step.sendEvent('folders-sync-complete', {
         name: 'one-drive/foder-items.sync.completed',
         data: {
           organisationId,
-          folderId,
+          folderId: folder.id,
         },
       });
     } else {

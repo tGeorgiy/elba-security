@@ -20,6 +20,9 @@ const driveItemSchema = z.object({
       childCount: z.number(),
     })
     .optional(),
+  parentReference: z.object({
+    id: z.string().optional(),
+  }),
 });
 
 type GetItemsParams = {
@@ -37,7 +40,7 @@ export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: 
 
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/${urlEnding}`);
   url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE));
-  url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy');
+  url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy,parentReference');
 
   if (skipToken) {
     url.searchParams.append('$skiptoken', skipToken);
@@ -57,5 +60,5 @@ export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: 
 
   const nextSkipToken = getNextSkipTokenFromNextLink(data['@odata.nextLink']);
 
-  return { items: data.value, nextSkipToken };
+  return { items: data.value.map((item) => driveItemSchema.parse(item)), nextSkipToken };
 };

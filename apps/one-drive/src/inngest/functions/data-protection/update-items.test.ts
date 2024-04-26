@@ -11,7 +11,7 @@ import type { Delta } from '@/connectors/delta/get-delta';
 import { env } from '@/env';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
 import { MicrosoftError } from '@/common/error';
-import { parsedDelta, updateItems } from './update-items';
+import { parsedDeltaState, removeInherited, updateItems } from './update-items';
 import type { ItemsWithPermisions } from './sync-items';
 import { formatDataProtetionItems } from './sync-items';
 
@@ -42,23 +42,27 @@ const sharePoint = {
   delta: deltaToken,
 };
 
-// updated
-const items: Delta[] = Array.from({ length: updatedCount }, (_, i) => ({
-  id: `item-id-${i}`,
-  name: `$name-${i}`,
-  webUrl: `http://webUrl-${i}.somedomain.net`,
-  createdBy: {
-    user: {
-      email: `user-email-${i}@someemail.com`,
-      id: `user-id-${i}`,
-      displayName: `user-displayName-${i}`,
-    },
-  },
-}));
+const itemLength = updatedCount + deletedCount;
 
-//add deleted
-items.push(
-  ...Array.from({ length: deletedCount }, (_, i) => ({
+const items: Delta[] = Array.from({ length: itemLength }, (_, i) => {
+  const parentReference = { id: i === 0 ? undefined : `item-id-${i - 1}` };
+
+  if (i < itemLength / 2) {
+    return {
+      id: `item-id-${i}`,
+      name: `$name-${i}`,
+      webUrl: `http://webUrl-${i}.somedomain.net`,
+      createdBy: {
+        user: {
+          email: `user-email-${i}@someemail.com`,
+          id: `user-id-${i}`,
+          displayName: `user-displayName-${i}`,
+        },
+      },
+      parentReference,
+    };
+  }
+  return {
     id: `item-id-${i}`,
     name: `$name-${i}`,
     webUrl: `http://webUrl-${i}.somedomain.net`,
@@ -70,12 +74,12 @@ items.push(
       },
     },
     deleted: { state: 'deleted' },
-  }))
-);
+    parentReference,
+  };
+});
 
-const permissions: MicrosoftDriveItemPermissions[] = Array.from(
-  { length: (updatedCount + deletedCount) * 2 },
-  (_, i) => ({
+const mockPermissions = (itemCount: number): MicrosoftDriveItemPermissions[] => {
+  return Array.from({ length: itemCount }, (_, i) => ({
     id: `permission-id-${i}`,
     roles: ['write'],
     link: { scope: 'users' },
@@ -95,8 +99,8 @@ const permissions: MicrosoftDriveItemPermissions[] = Array.from(
         },
       },
     ],
-  })
-);
+  }));
+};
 
 const setupData = {
   siteId,
@@ -147,15 +151,23 @@ describe('update-item-and-permissions', () => {
   test('should run elba udate and elba delete when there is updated and deleted items', async () => {
     const skipToken = null;
     const elba = spyOnElba();
+    let callCount = 0;
 
     vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
       delta: items,
       nextSkipToken: skipToken,
       newDeltaToken: deltaToken,
     });
-    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
-      permissions,
-      nextSkipToken: skipToken,
+
+    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockImplementation(() => {
+      callCount++;
+
+      const itemCount = callCount <= itemLength / 2 ? 4 : 6;
+
+      return Promise.resolve({
+        permissions: mockPermissions(itemCount),
+        nextSkipToken: skipToken,
+      });
     });
 
     const [result, { step }] = setup(setupData);
@@ -172,7 +184,7 @@ describe('update-item-and-permissions', () => {
       deltaToken,
     });
 
-    const { deleted, updated } = parsedDelta(items);
+    const { deleted, updated } = parsedDeltaState(items);
 
     expect(elba).toBeCalledTimes(1);
     expect(elba).toBeCalledWith({
@@ -184,17 +196,21 @@ describe('update-item-and-permissions', () => {
 
     const elbaInstance = elba.mock.results[0]?.value;
 
-    const updateItemsWithPermisionsResult = updated.map((item) => ({
+    const updatedLength = updated.length;
+
+    const updateItemsWithPermisionsResult = updated.map((item, index) => ({
       item,
-      permissions: permissions.map((permission) =>
+      permissions: mockPermissions(index <= updatedLength / 2 ? 4 : 6).map((permission) =>
         permissionsConnector.validateAndParsePermission(
           permission as unknown as MicrosoftDriveItemPermissions
         )
       ),
-    }));
+    })) as ItemsWithPermisions[];
+
+    const { toDelete, toUpdate } = removeInherited(updateItemsWithPermisionsResult);
 
     const updateDataProtectionItems = formatDataProtetionItems({
-      itemsWithPermisions: updateItemsWithPermisionsResult as unknown as ItemsWithPermisions[],
+      itemsWithPermisions: toUpdate,
       siteId,
       driveId,
     });
@@ -206,7 +222,7 @@ describe('update-item-and-permissions', () => {
 
     expect(elbaInstance?.dataProtection.deleteObjects).toBeCalledTimes(1);
     expect(elbaInstance?.dataProtection.deleteObjects).toBeCalledWith({
-      ids: deleted,
+      ids: [...deleted, ...toDelete],
     });
 
     expect(step.run).toBeCalledTimes(3);

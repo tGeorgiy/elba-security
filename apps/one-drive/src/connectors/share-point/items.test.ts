@@ -26,6 +26,9 @@ const items: MicrosoftDriveItem[] = Array.from({ length: 5 }, (_, i) => ({
     },
   },
   folder: { childCount: i },
+  parentReference: {
+    id: `some-parent-id-${i}`,
+  },
 }));
 
 describe('items connector', () => {
