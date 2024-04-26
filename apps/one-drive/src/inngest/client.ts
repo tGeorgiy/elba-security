@@ -53,7 +53,10 @@ export const inngest = new Inngest({
         driveId: string;
         organisationId: string;
         isFirstSync: boolean;
-        folderId: string | null;
+        folder: {
+          id: string | null;
+          permissions: string[] | [];
+        } | null;
         skipToken: string | null;
       };
     };

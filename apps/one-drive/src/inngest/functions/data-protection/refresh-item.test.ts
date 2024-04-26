@@ -36,6 +36,9 @@ const item: MicrosoftDriveItem = {
       email: `some-user-email-1`,
     },
   },
+  parentReference: {
+    id: 'some-parent-id-1',
+  },
 };
 
 const permissions: MicrosoftDriveItemPermissions[] = Array.from({ length: 10 }, (_, i) => ({

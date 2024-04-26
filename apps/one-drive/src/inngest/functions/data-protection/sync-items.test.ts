@@ -38,6 +38,9 @@ const createTempData = (title: string, i: number): MicrosoftDriveItem => ({
       displayName: `${title}user-displayName-${i}`,
     },
   },
+  parentReference: {
+    id: `${title}-parent-id-${i}`,
+  },
 });
 
 const itemItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) =>
@@ -80,7 +83,7 @@ const setupData = {
   siteId,
   driveId,
   isFirstSync,
-  folderId,
+  folder: null,
   skipToken: null,
   organisationId: organisation.id,
 };
@@ -138,7 +141,7 @@ describe('sync-items', () => {
       token,
       siteId,
       driveId,
-      folderId,
+      folderId: null,
       skipToken,
     });
 
@@ -154,7 +157,7 @@ describe('sync-items', () => {
             siteId,
             driveId,
             isFirstSync,
-            folderId: id,
+            folder: { id, permissions: [] },
             skipToken: null,
             organisationId: organisation.id,
           },
@@ -221,7 +224,7 @@ describe('sync-items', () => {
         siteId,
         driveId,
         isFirstSync,
-        folderId,
+        folder: { id: null, permissions: [] },
         skipToken: nextSkipToken,
         organisationId: organisation.id,
       },
@@ -243,7 +246,11 @@ describe('sync-items', () => {
       nextSkipToken: skipToken,
     });
 
-    const [result, { step }] = setup({ ...setupData, skipToken });
+    const [result, { step }] = setup({
+      ...setupData,
+      folder: { id: 'some-folder-id', permissions: ['some-permission-id'] },
+      skipToken,
+    });
 
     await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
@@ -254,7 +261,7 @@ describe('sync-items', () => {
       token,
       siteId,
       driveId,
-      folderId,
+      folderId: 'some-folder-id',
       skipToken,
     });
 
@@ -270,7 +277,7 @@ describe('sync-items', () => {
             siteId,
             driveId,
             isFirstSync,
-            folderId: id,
+            folder: { id, permissions: ['some-permission-id'] },
             skipToken: null,
             organisationId: organisation.id,
           },
@@ -354,7 +361,7 @@ describe('sync-items', () => {
       nextSkipToken: skipToken,
     });
 
-    const [result, { step }] = setup({ ...setupData, folderId: null, skipToken });
+    const [result, { step }] = setup({ ...setupData, folder: null, skipToken });
 
     await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
