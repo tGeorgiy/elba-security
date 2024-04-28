@@ -1,8 +1,8 @@
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
+import { server } from '@elba-security/test-utils';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
-import { server } from '../../../vitest/setup-msw-handlers';
 import { deleteItemPermission } from './delete-item-permission';
 
 const validToken = 'token-1234';

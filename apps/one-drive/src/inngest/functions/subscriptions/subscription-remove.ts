@@ -11,7 +11,7 @@ export const subscriptionRemove = inngest.createFunction(
     id: 'subscribe-remove',
     cancelOn: [
       {
-        event: 'one-drive/app.uninstall.requested',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {

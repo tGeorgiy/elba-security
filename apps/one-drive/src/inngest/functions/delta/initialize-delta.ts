@@ -20,7 +20,7 @@ export const initializeDelta = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstall.requested',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {
@@ -31,10 +31,8 @@ export const initializeDelta = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/data_protection.initialize_delta.requested' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const { organisationId, siteId, driveId, isFirstSync, skipToken } = event.data;
-
-    logger.info('Delta Start');
 
     const [organisation] = await db
       .select({
@@ -61,7 +59,6 @@ export const initializeDelta = inngest.createFunction(
     });
 
     if (nextSkipToken) {
-      logger.info('DELTA PAGINATE');
       await step.sendEvent('sync-next-delta-page', {
         name: 'one-drive/data_protection.initialize_delta.requested',
         data: {
@@ -88,8 +85,6 @@ export const initializeDelta = inngest.createFunction(
       },
     });
 
-    logger.info('🚀 ~ data:', data);
-
     await db
       .insert(sharePointTable)
       .values({
@@ -106,8 +101,6 @@ export const initializeDelta = inngest.createFunction(
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cant be null
         set: { subscriptionId: data.id, delta: newDeltaToken!, siteId },
       });
-
-    logger.info('🚀 ~ DELTA COMPLETED:');
 
     return {
       status: 'completed',

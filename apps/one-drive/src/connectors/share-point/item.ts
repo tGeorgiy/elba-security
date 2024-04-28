@@ -16,7 +16,7 @@ export const getItem = async ({
   itemId,
 }: GetItemParams): Promise<MicrosoftDriveItem | 'notFound'> => {
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/items/${itemId}`);
-  url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy');
+  url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy,parentReference');
 
   const response = await fetch(url, {
     headers: {

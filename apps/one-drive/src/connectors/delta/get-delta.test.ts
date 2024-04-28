@@ -1,8 +1,8 @@
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
+import { server } from '@elba-security/test-utils';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
-import { server } from '../../../vitest/setup-msw-handlers';
 import { getDelta, type Delta } from './get-delta';
 
 const siteId = 'some-site-id';
@@ -27,6 +27,9 @@ const delta: Delta[] = Array.from({ length: 10 }, (_, i) => ({
     },
   },
   deleted: i % 3 === 0 ? { state: 'deleted' } : null,
+  parentReference: {
+    id: `some-parent-id-1`,
+  },
 }));
 
 describe('delta connector', () => {

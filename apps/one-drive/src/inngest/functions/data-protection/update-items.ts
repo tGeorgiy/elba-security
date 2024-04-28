@@ -8,8 +8,8 @@ import { decrypt } from '@/common/crypto';
 import type { Delta } from '@/connectors/delta/get-delta';
 import { getDelta } from '@/connectors/delta/get-delta';
 import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
-import { createElbaClient } from '@/connectors/elba/client';
 import { MicrosoftError } from '@/common/error';
+import { getElbaClient } from '@/connectors/elba/client';
 import type { ItemsWithPermisions } from './sync-items';
 import {
   formatDataProtetionItems,
@@ -81,11 +81,9 @@ export const updateItems = inngest.createFunction(
     retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
   },
   { event: 'one-drive/update-items.triggered' },
-  async ({ event, step, logger }) => {
+  async ({ event, step }) => {
     const { siteId, driveId, subscriptionId, tenantId, skipToken } = event.data;
     let itemIdsWithoutPermissions: string[] = [];
-
-    logger.info('Update Items');
 
     const [record] = await db
       .select({
@@ -124,7 +122,7 @@ export const updateItems = inngest.createFunction(
 
     const { deleted, updated } = parsedDeltaState(delta);
 
-    const elba = createElbaClient(record.organisationId, record.region);
+    const elba = getElbaClient({ organisationId: record.organisationId, region: record.region });
 
     if (updated.length) {
       itemIdsWithoutPermissions = await step.run('update elba items', async () => {
@@ -177,8 +175,6 @@ export const updateItems = inngest.createFunction(
     }
 
     if (nextSkipToken) {
-      logger.info('ITEMS PAGINATION');
-
       await step.sendEvent('sync-next-delta-page', {
         name: 'one-drive/update-items.triggered',
         data: {
