@@ -11,7 +11,7 @@ export const subscriptionRefresh = inngest.createFunction(
     id: 'subscribe-refresh',
     cancelOn: [
       {
-        event: 'one-drive/app.uninstall.requested',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {

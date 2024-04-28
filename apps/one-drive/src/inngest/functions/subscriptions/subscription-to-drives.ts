@@ -19,7 +19,7 @@ export const subscriptionToDrive = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstall.requested',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
       {

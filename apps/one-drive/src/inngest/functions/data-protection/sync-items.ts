@@ -187,7 +187,7 @@ export const syncItems = inngest.createFunction(
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.uninstall.requested',
+        event: 'one-drive/app.uninstalled.requested',
         match: 'data.organisationId',
       },
     ],

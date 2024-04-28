@@ -1,19 +1,20 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-// import { and, eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import * as deltaConnector from '@/connectors/delta/get-delta';
-// import * as createSubscriptionConnector from '@/connectors/subscription/create-subcsription';
-// import type { Subscription } from '@/connectors/subscription/create-subcsription';
-import { organisationsTable } from '@/database/schema';
+import * as createSubscriptionConnector from '@/connectors/subscription/create-subcsription';
+import type { Subscription } from '@/connectors/subscription/create-subcsription';
+import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
+import { subscriptionToDrive } from '../subscriptions/subscription-to-drives';
 import { initializeDelta } from './initialize-delta';
 
 const token = 'test-token';
 const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
-// const deltaToken = 'some-delta-token';
+const deltaToken = 'some-delta-token';
 
 const organisation = {
   id: '45a76301-f1dd-4a77-b12f-9d7d3fca3c90',
@@ -22,10 +23,10 @@ const organisation = {
   region: 'us',
 };
 
-// const subscriptionData: Subscription = {
-//   id: 'somesubscription-id',
-//   expirationDateTime: '2023-10-24 14:40:00.000000+03',
-// };
+const subscriptionData: Subscription = {
+  id: 'somesubscription-id',
+  expirationDateTime: '2023-10-24 14:40:00.000000+03',
+};
 
 const setupData = {
   organisationId: organisation.id,
@@ -78,38 +79,50 @@ describe('sync-sites', () => {
     await expect(result).resolves.toStrictEqual({ status: 'ongoing' });
   });
 
-  // test('should finalize the sync and insert/update data in db', async () => {
-  //   const nextSkipToken = null;
+  test('should finalize the sync and insert/update data in db', async () => {
+    const nextSkipToken = null;
 
-  //   vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
-  //     delta: [],
-  //     nextSkipToken,
-  //     newDeltaToken: deltaToken,
-  //   });
-  //   vi.spyOn(createSubscriptionConnector, 'createSubscription').mockResolvedValue(subscriptionData);
+    vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
+      delta: [],
+      nextSkipToken,
+      newDeltaToken: deltaToken,
+    });
+    vi.spyOn(createSubscriptionConnector, 'createSubscription').mockResolvedValue(subscriptionData);
 
-  //   const [result] = setup(setupData);
+    const [result, { step }] = setup(setupData);
+    step.invoke.mockResolvedValue(subscriptionData);
 
-  //   await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toStrictEqual({ status: 'completed' });
 
-  //   const [record] = await db
-  //     .select({
-  //       subscriptionId: sharePointTable.subscriptionId,
-  //       subscriptionExpirationDate: sharePointTable.subscriptionExpirationDate,
-  //       delta: sharePointTable.delta,
-  //     })
-  //     .from(sharePointTable)
-  //     .where(
-  //       and(
-  //         eq(sharePointTable.organisationId, organisation.id),
-  //         eq(sharePointTable.siteId, siteId),
-  //         eq(sharePointTable.driveId, driveId)
-  //       )
-  //     );
+    expect(step.invoke).toBeCalledTimes(1);
+    expect(step.invoke).toBeCalledWith('one-drive/drives.subscription.triggered', {
+      function: subscriptionToDrive,
+      data: {
+        organisationId: organisation.id,
+        siteId,
+        driveId,
+        isFirstSync: true,
+      },
+    });
 
-  //   expect(record).toBeDefined();
-  //   expect(record?.subscriptionId).toBe(subscriptionData.id);
-  //   expect(record?.subscriptionExpirationDate).toBe(subscriptionData.expirationDateTime);
-  //   expect(record?.delta).toBe(deltaToken);
-  // });
+    const [record] = await db
+      .select({
+        subscriptionId: sharePointTable.subscriptionId,
+        subscriptionExpirationDate: sharePointTable.subscriptionExpirationDate,
+        delta: sharePointTable.delta,
+      })
+      .from(sharePointTable)
+      .where(
+        and(
+          eq(sharePointTable.organisationId, organisation.id),
+          eq(sharePointTable.siteId, siteId),
+          eq(sharePointTable.driveId, driveId)
+        )
+      );
+
+    expect(record).toBeDefined();
+    expect(record?.subscriptionId).toBe(subscriptionData.id);
+    expect(record?.subscriptionExpirationDate).toBe(subscriptionData.expirationDateTime);
+    expect(record?.delta).toBe(deltaToken);
+  });
 });
