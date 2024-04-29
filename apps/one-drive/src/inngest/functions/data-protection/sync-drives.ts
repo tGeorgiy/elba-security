@@ -73,7 +73,7 @@ export const syncDrives = inngest.createFunction(
             siteId,
             driveId: id,
             isFirstSync,
-            folderId: null,
+            folder: null,
             skipToken: null,
             organisationId,
           },
