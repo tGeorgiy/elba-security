@@ -12,7 +12,7 @@ const zEnvRetry = () =>
     0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12 | 13 | 14 | 15 | 16 | 17 | 18 | 19 | 20
   >;
 
-const MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE = 15;
+const MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE = 20;
 
 export const env = z
   .object({
@@ -54,6 +54,8 @@ export const env = z
       .default(15),
     MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY: zEnvRetry(),
     MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 * * 1-5'),
+    SUBSCRIBE_EXPIRATION_DAYS: z.string().default('1'),
+    WEBHOOK_URL: z.string().url(),
     ELBA_API_KEY: z.string().min(1),
     ELBA_API_BASE_URL: z.string().url(),
     ELBA_REDIRECT_URL: z.string().url(),

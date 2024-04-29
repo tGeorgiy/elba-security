@@ -18,8 +18,6 @@ const baseSchema = z.object({
   permissions: z.array(z.object({ id: z.string() })),
 });
 
-export type DeleteItemPermissionsSchema = z.infer<typeof baseSchema>;
-
 export async function POST(request: Request) {
   const data: unknown = await request.json();
 

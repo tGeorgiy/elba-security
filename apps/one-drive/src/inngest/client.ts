@@ -15,7 +15,7 @@ export const inngest = new Inngest({
         skipToken: string | null;
       };
     };
-    'one-drive/one-drive.elba_app.installed': {
+    'one-drive/app.install.requested': {
       data: {
         organisationId: string;
       };
@@ -53,7 +53,10 @@ export const inngest = new Inngest({
         driveId: string;
         organisationId: string;
         isFirstSync: boolean;
-        folderId: string | null;
+        folder: {
+          id: string | null;
+          permissions: string[] | [];
+        } | null;
         skipToken: string | null;
       };
     };
@@ -94,6 +97,50 @@ export const inngest = new Inngest({
           driveId: string;
         };
         permissions: string[];
+      };
+    };
+    'one-drive/drives.subscription.triggered': {
+      data: {
+        organisationId: string;
+        siteId: string;
+        driveId: string;
+        isFirstSync: boolean;
+      };
+    };
+    'one-drive/subscription.refresh.triggered': {
+      data: {
+        subscriptionId: string;
+        organisationId: string;
+      };
+    };
+    'one-drive/subscription.remove.triggered': {
+      data: {
+        subscriptionId: string;
+        organisationId: string;
+      };
+    };
+    'one-drive/subscription.remove.completed': {
+      data: {
+        subscriptionId: string;
+        organisationId: string;
+      };
+    };
+    'one-drive/data_protection.initialize_delta.requested': {
+      data: {
+        organisationId: string;
+        siteId: string;
+        driveId: string;
+        isFirstSync: boolean;
+        skipToken: string | null;
+      };
+    };
+    'one-drive/update-items.triggered': {
+      data: {
+        siteId: string;
+        driveId: string;
+        subscriptionId: string;
+        tenantId: string;
+        skipToken: string | null;
       };
     };
   }>(),

@@ -1,8 +1,8 @@
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
+import { server } from '@elba-security/test-utils';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
-import { server } from '../../../vitest/setup-msw-handlers';
 import { type MicrosoftDriveItem, getItems } from './items';
 
 const validToken = 'token-1234';
@@ -26,6 +26,9 @@ const items: MicrosoftDriveItem[] = Array.from({ length: 5 }, (_, i) => ({
     },
   },
   folder: { childCount: i },
+  parentReference: {
+    id: `some-parent-id-${i}`,
+  },
 }));
 
 describe('items connector', () => {

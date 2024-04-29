@@ -24,7 +24,7 @@ export const syncSites = inngest.createFunction(
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/one-drive.elba_app.installed',
+        event: 'one-drive/app.install.requested',
         match: 'data.organisationId',
       },
     ],
@@ -56,13 +56,13 @@ export const syncSites = inngest.createFunction(
     });
 
     if (sites.length) {
-      const eventsWait = sites.map(({ id }) => {
-        return step.waitForEvent(`wait-for-drives-complete-${id}`, {
+      const eventsWait = sites.map(({ id }) =>
+        step.waitForEvent(`wait-for-drives-complete-${id}`, {
           event: 'one-drive/drives.sync.completed',
           timeout: '1d',
           if: `async.data.organisationId == '${organisationId}' && async.data.siteId == '${id}'`,
-        });
-      });
+        })
+      );
 
       await step.sendEvent(
         'drives-sync-triggered',

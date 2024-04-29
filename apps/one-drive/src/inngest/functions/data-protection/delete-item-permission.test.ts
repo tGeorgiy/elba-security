@@ -14,7 +14,6 @@ const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const itemId = 'some-item-id';
 const notFoundPermissionId = 'not-found-permission-id';
-const unexpectedFailedPermissionsId = 'unexpected-failed-permission-id';
 
 const organisation = {
   id: '45a76301-f1dd-4a77-b12f-9d7d3fca3c90',
@@ -26,7 +25,6 @@ const organisation = {
 const permissions: string[] = Array.from({ length: 5 }, (_, i) => `some-permission-id-${i}`);
 
 const notFoundPermissionArray = [...permissions, notFoundPermissionId];
-const unexpectedFailedPermissionsArray = [...permissions, unexpectedFailedPermissionsId];
 
 const setupData = {
   id: itemId,
@@ -70,7 +68,6 @@ describe('delete-object', () => {
     await expect(result).resolves.toStrictEqual({
       deletedPermissions: permissions,
       notFoundPermissions: [],
-      unexpectedFailedPermissions: [],
     });
 
     expect(step.run).toBeCalledTimes(permissions.length);
@@ -110,7 +107,6 @@ describe('delete-object', () => {
     await expect(result).resolves.toStrictEqual({
       deletedPermissions: permissions,
       notFoundPermissions: [notFoundPermissionId],
-      unexpectedFailedPermissions: [],
     });
 
     expect(step.run).toBeCalledTimes(notFoundPermissionArray.length);
@@ -120,44 +116,6 @@ describe('delete-object', () => {
 
     for (let i = 0; i < notFoundPermissionArray.length; i++) {
       const permissionId = notFoundPermissionArray[i];
-      expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
-        token,
-        itemId,
-        siteId,
-        driveId,
-        permissionId,
-      });
-    }
-  });
-
-  test('should delete object when item exists and return deleted permissions and unexpectedFailedPermissions', async () => {
-    vi.spyOn(deleteItemPermisionConnector, 'deleteItemPermission').mockImplementation(
-      ({ permissionId }) => {
-        if (permissionId === unexpectedFailedPermissionsId) {
-          return Promise.reject(new Error('Could not delete item permission'));
-        }
-        return Promise.resolve();
-      }
-    );
-
-    const [result, { step }] = setup({
-      ...setupData,
-      permissions: unexpectedFailedPermissionsArray,
-    });
-
-    await expect(result).resolves.toStrictEqual({
-      deletedPermissions: permissions,
-      notFoundPermissions: [],
-      unexpectedFailedPermissions: [unexpectedFailedPermissionsId],
-    });
-
-    expect(step.run).toBeCalledTimes(unexpectedFailedPermissionsArray.length);
-    expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(
-      unexpectedFailedPermissionsArray.length
-    );
-
-    for (let i = 0; i < unexpectedFailedPermissionsArray.length; i++) {
-      const permissionId = unexpectedFailedPermissionsArray[i];
       expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
         token,
         itemId,

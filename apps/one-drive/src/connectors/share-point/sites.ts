@@ -31,7 +31,7 @@ export const getSites = async ({ token, skipToken }: GetSitesParams) => {
   });
 
   if (!response.ok) {
-    throw new MicrosoftError('Could not retrieve users', { response });
+    throw new MicrosoftError('Could not retrieve sites', { response });
   }
 
   const data = (await response.json()) as MicrosoftPaginatedResponse<MicrosoftSite>;

@@ -1,5 +1,5 @@
 import { inngest } from '@/inngest/client';
-import type { DeleteItemPermissionsSchema } from './route';
+import type { DeleteItemPermissionsSchema } from './types';
 
 export const deleteObjectPermissions = async (data: DeleteItemPermissionsSchema) => {
   await inngest.send({

@@ -1,8 +1,8 @@
 import { http } from 'msw';
 import { describe, expect, test, beforeEach } from 'vitest';
+import { server } from '@elba-security/test-utils';
 import { env } from '@/env';
 import { MicrosoftError } from '@/common/error';
-import { server } from '../../../vitest/setup-msw-handlers';
 import { getUsers } from './get-users';
 import type { MicrosoftUser } from './get-users';
 

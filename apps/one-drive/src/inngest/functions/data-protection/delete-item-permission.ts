@@ -20,7 +20,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/one-drive.elba_app.installed',
+        event: 'one-drive/app.install.requested',
         match: 'data.organisationId',
       },
     ],
