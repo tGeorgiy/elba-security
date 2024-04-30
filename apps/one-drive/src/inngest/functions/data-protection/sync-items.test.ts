@@ -9,7 +9,7 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/per
 import { encrypt } from '@/common/crypto';
 import { organisationsTable } from '@/database/schema';
 import { db } from '@/database/client';
-import { syncItems, groupItems, formatDataProtetionItems } from './sync-items';
+import { syncItems, groupItems, formatDataProtetionItems, removeInheritedSync } from './sync-items';
 import type { ItemsWithPermisions } from './sync-items';
 
 const token = 'test-token';
@@ -25,7 +25,7 @@ const driveId = 'some-drive-id';
 const folderId = 'some-folder-id';
 const isFirstSync = false;
 
-const itemsCount = 5;
+const itemsCount = 10;
 
 const createTempData = (title: string, i: number): MicrosoftDriveItem => ({
   id: `${title}-id-${i}`,
@@ -43,20 +43,23 @@ const createTempData = (title: string, i: number): MicrosoftDriveItem => ({
   },
 });
 
-const itemItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) =>
-  createTempData('item', i)
-);
+const groupedItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) => {
+  const parentReference = { id: i === 0 ? undefined : `item-id-${i - 1}` };
+  if (i < itemsCount / 2) {
+    return {
+      ...createTempData('item', i),
+      parentReference,
+    };
+  }
+  return {
+    ...createTempData('folder', i),
+    folder: { childCount: i },
+    parentReference,
+  };
+});
 
-const folderItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) => ({
-  ...createTempData('folder', i),
-  folder: { childCount: i },
-}));
-
-const groupedItems: MicrosoftDriveItem[] = [...folderItems, ...itemItems];
-
-const permissions: MicrosoftDriveItemPermissions[] = Array.from(
-  { length: itemsCount * 2 },
-  (_, i) => ({
+const mockPermissions = (itemCount: number): MicrosoftDriveItemPermissions[] => {
+  return Array.from({ length: itemCount }, (_, i) => ({
     id: `permission-id-${i}`,
     roles: ['write'],
     link: { scope: 'users' },
@@ -76,8 +79,8 @@ const permissions: MicrosoftDriveItemPermissions[] = Array.from(
         },
       },
     ],
-  })
-);
+  }));
+};
 
 const setupData = {
   siteId,
@@ -120,6 +123,7 @@ describe('sync-items', () => {
     const skipToken = null;
     const defaultEventsCount = 1;
     const elba = spyOnElba();
+    const permissions = mockPermissions(itemsCount);
 
     vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
       items: groupedItems,
@@ -157,7 +161,7 @@ describe('sync-items', () => {
             siteId,
             driveId,
             isFirstSync,
-            folder: { id, permissions: [] },
+            folder: { id, paginated: false, permissions: [] },
             skipToken: null,
             organisationId: organisation.id,
           },
@@ -224,7 +228,7 @@ describe('sync-items', () => {
         siteId,
         driveId,
         isFirstSync,
-        folder: { id: null, permissions: [] },
+        folder: { id: null, paginated: false, permissions: [] },
         skipToken: nextSkipToken,
         organisationId: organisation.id,
       },
@@ -236,19 +240,26 @@ describe('sync-items', () => {
     const skipToken = 'skip-token';
     const defaultEventsCount = 1;
     const elba = spyOnElba();
+    let callCount = 1;
 
     vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
       items: groupedItems,
       nextSkipToken,
     });
-    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
-      permissions,
-      nextSkipToken: skipToken,
+
+    vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockImplementation(() => {
+      const itemCount = callCount === itemsCount + 1 ? itemsCount / 2 : itemsCount;
+      callCount++;
+
+      return Promise.resolve({
+        permissions: mockPermissions(itemCount),
+        nextSkipToken: skipToken,
+      });
     });
 
     const [result, { step }] = setup({
       ...setupData,
-      folder: { id: 'some-folder-id', permissions: ['some-permission-id'] },
+      folder: { id: 'some-folder-id', paginated: false, permissions: ['some-permission-id'] },
       skipToken,
     });
 
@@ -277,7 +288,7 @@ describe('sync-items', () => {
             siteId,
             driveId,
             isFirstSync,
-            folder: { id, permissions: ['some-permission-id'] },
+            folder: { id, paginated: false, permissions: ['some-permission-id'] },
             skipToken: null,
             organisationId: organisation.id,
           },
@@ -297,7 +308,8 @@ describe('sync-items', () => {
       }
     }
 
-    expect(permissionsConnector.getAllItemPermissions).toBeCalledTimes(groupedItems.length);
+    // One additional call to get parent folder permissions if we have one
+    expect(permissionsConnector.getAllItemPermissions).toBeCalledTimes(groupedItems.length + 1);
 
     for (const item of [...folders, ...files]) {
       expect(permissionsConnector.getAllItemPermissions).toBeCalledWith({
@@ -310,7 +322,7 @@ describe('sync-items', () => {
 
     const itemsWithPermisionsResult = [...folders, ...files].map((item) => ({
       item,
-      permissions: permissions.map((permission) =>
+      permissions: mockPermissions(itemsCount).map((permission) =>
         permissionsConnector.validateAndParsePermission(
           permission as unknown as MicrosoftDriveItemPermissions
         )
@@ -318,7 +330,10 @@ describe('sync-items', () => {
     }));
 
     const dataProtectionItems = formatDataProtetionItems({
-      itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
+      itemsWithPermisions: removeInheritedSync(
+        mockPermissions(itemsCount / 2).map((permission) => permission.id),
+        itemsWithPermisionsResult as ItemsWithPermisions[]
+      ),
       siteId,
       driveId,
     });
@@ -351,9 +366,10 @@ describe('sync-items', () => {
     const nextSkipToken = null;
     const skipToken = 'skip-token';
     const elba = spyOnElba();
+    const permissions = mockPermissions(itemsCount);
 
     vi.spyOn(itemsConnector, 'getItems').mockResolvedValue({
-      items: itemItems,
+      items: groupedItems.filter((item) => !item.folder),
       nextSkipToken,
     });
     vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
