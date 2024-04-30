@@ -39,7 +39,7 @@ export const parsedDeltaState = (delta: Delta[]): ParsedDelta => {
   );
 };
 
-export const removeInherited = (
+export const removeInheritedUpdate = (
   itemsWithPermisions: ItemsWithPermisions[]
 ): ItemsWithPermisionsParsed => {
   return itemsWithPermisions.reduce<ItemsWithPermisionsParsed>(
@@ -138,7 +138,7 @@ export const updateItems = inngest.createFunction(
           driveId,
         });
 
-        const { toDelete, toUpdate } = removeInherited(itemsWithPermisions);
+        const { toDelete, toUpdate } = removeInheritedUpdate(itemsWithPermisions);
 
         const dataProtectionItems = formatDataProtetionItems({
           itemsWithPermisions: toUpdate,

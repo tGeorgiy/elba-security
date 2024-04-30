@@ -17,7 +17,7 @@ export type ItemsWithPermisions = {
   permissions: MicrosoftDriveItemPermissions[];
 };
 
-const removeInherited = (
+export const removeInheritedSync = (
   parentPermissionIds: string[],
   itemsWithPermisions: ItemsWithPermisions[]
 ): ItemsWithPermisions[] => {
@@ -243,7 +243,11 @@ export const syncItems = inngest.createFunction(
             siteId,
             driveId,
             isFirstSync,
-            folder: { id, permissions: folder?.permissions || [] },
+            folder: {
+              id,
+              paginated: folder?.paginated || false,
+              permissions: folder?.permissions || [],
+            },
             skipToken: null,
             organisationId,
           },
@@ -253,12 +257,13 @@ export const syncItems = inngest.createFunction(
       await Promise.all(eventsWait);
     }
 
-    const parentFolderPermissions = await step.run('get-permissions-update-elba', async () => {
+    const getPermissionsResult = await step.run('get-permissions-update-elba', async () => {
       const itemsChunks = getCkunkedArray<MicrosoftDriveItem>(
         [...folders, ...files],
         env.MICROSOFT_DATA_PROTECTION_ITEM_PERMISSIONS_CHUNK_SIZE
       );
       const parentPermissions: string[] = [];
+      let setPaginated = false;
 
       const itemsWithPermisions = await getItemsWithPermisionsFromChunks({
         itemsChunks,
@@ -267,8 +272,8 @@ export const syncItems = inngest.createFunction(
         driveId,
       });
 
-      // Checking that we have the folder id and no permissions (it indicates that it is first run, and not a pagination)
-      if (folder?.id && !folder.permissions.length) {
+      // Checking that we have the folder id and this is not a paginated call
+      if (folder?.id && !folder.paginated) {
         const { permissions } = await getAllItemPermissions({
           token,
           siteId,
@@ -276,18 +281,19 @@ export const syncItems = inngest.createFunction(
           itemId: folder.id,
         });
 
+        setPaginated = true;
         parentPermissions.push(...permissions.map((el) => el.id));
       } else if (folder?.permissions.length) {
         parentPermissions.push(...folder.permissions);
       }
 
       const dataProtectionItems = formatDataProtetionItems({
-        itemsWithPermisions: removeInherited(parentPermissions, itemsWithPermisions),
+        itemsWithPermisions: removeInheritedSync(parentPermissions, itemsWithPermisions),
         siteId,
         driveId,
       });
 
-      if (!dataProtectionItems.length) return;
+      if (!dataProtectionItems.length) return { parentPermissions, setPaginated };
 
       const elba = getElbaClient({ organisationId, region: organisation.region });
 
@@ -295,7 +301,7 @@ export const syncItems = inngest.createFunction(
         objects: dataProtectionItems,
       });
 
-      return parentPermissions;
+      return { parentPermissions, setPaginated };
     });
 
     if (nextSkipToken) {
@@ -305,7 +311,8 @@ export const syncItems = inngest.createFunction(
           ...event.data,
           folder: {
             id: folder?.id || null,
-            permissions: parentFolderPermissions || [],
+            paginated: folder?.paginated || getPermissionsResult.setPaginated,
+            permissions: getPermissionsResult.parentPermissions,
           },
 
           skipToken: nextSkipToken,

@@ -55,6 +55,7 @@ export const inngest = new Inngest({
         isFirstSync: boolean;
         folder: {
           id: string | null;
+          paginated: boolean;
           permissions: string[] | [];
         } | null;
         skipToken: string | null;

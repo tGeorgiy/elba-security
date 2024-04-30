@@ -11,7 +11,7 @@ import type { Delta } from '@/connectors/delta/get-delta';
 import { env } from '@/env';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
 import { MicrosoftError } from '@/common/error';
-import { parsedDeltaState, removeInherited, updateItems } from './update-items';
+import { parsedDeltaState, removeInheritedUpdate, updateItems } from './update-items';
 import type { ItemsWithPermisions } from './sync-items';
 import { formatDataProtetionItems } from './sync-items';
 
@@ -44,37 +44,34 @@ const sharePoint = {
 
 const itemLength = updatedCount + deletedCount;
 
+const createTempData = (
+  i: number,
+  parentReference: {
+    id: string | undefined;
+  }
+): Delta => ({
+  id: `item-id-${i}`,
+  name: `$name-${i}`,
+  webUrl: `http://webUrl-${i}.somedomain.net`,
+  createdBy: {
+    user: {
+      email: `user-email-${i}@someemail.com`,
+      id: `user-id-${i}`,
+      displayName: `user-displayName-${i}`,
+    },
+  },
+  parentReference,
+});
+
 const items: Delta[] = Array.from({ length: itemLength }, (_, i) => {
   const parentReference = { id: i === 0 ? undefined : `item-id-${i - 1}` };
 
   if (i < itemLength / 2) {
-    return {
-      id: `item-id-${i}`,
-      name: `$name-${i}`,
-      webUrl: `http://webUrl-${i}.somedomain.net`,
-      createdBy: {
-        user: {
-          email: `user-email-${i}@someemail.com`,
-          id: `user-id-${i}`,
-          displayName: `user-displayName-${i}`,
-        },
-      },
-      parentReference,
-    };
+    return createTempData(i, parentReference);
   }
   return {
-    id: `item-id-${i}`,
-    name: `$name-${i}`,
-    webUrl: `http://webUrl-${i}.somedomain.net`,
-    createdBy: {
-      user: {
-        email: `user-email-${i}@someemail.com`,
-        id: `user-id-${i}`,
-        displayName: `user-displayName-${i}`,
-      },
-    },
+    ...createTempData(i, parentReference),
     deleted: { state: 'deleted' },
-    parentReference,
   };
 });
 
@@ -207,7 +204,7 @@ describe('update-item-and-permissions', () => {
       ),
     })) as ItemsWithPermisions[];
 
-    const { toDelete, toUpdate } = removeInherited(updateItemsWithPermisionsResult);
+    const { toDelete, toUpdate } = removeInheritedUpdate(updateItemsWithPermisionsResult);
 
     const updateDataProtectionItems = formatDataProtetionItems({
       itemsWithPermisions: toUpdate,
