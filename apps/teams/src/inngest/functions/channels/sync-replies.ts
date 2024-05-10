@@ -8,13 +8,14 @@ import { decrypt } from '@/common/crypto';
 import { getReplies } from '@/connectors/microsoft/replies/replies';
 import { createElbaClient } from '@/connectors/elba/client';
 import { formatDataProtectionObject } from '@/connectors/elba/data-protection/object';
+import { mapInvalidMessageData } from '@/common/utils';
 
 export const syncReplies = inngest.createFunction(
   {
     id: 'teams-sync-replies',
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 1,
+      limit: env.TEAMS_REPLIES_SYNC_CONCURRENCY,
     },
     onFailure: async ({ event, step }) => {
       const { organisationId, messageId } = event.data.event.data;
@@ -37,8 +38,16 @@ export const syncReplies = inngest.createFunction(
   },
   { event: 'teams/replies.sync.requested' },
   async ({ event, step, logger }) => {
-    const { organisationId, teamId, skipToken, channelId, messageId, membershipType, channelName } =
-      event.data;
+    const {
+      organisationId,
+      teamId,
+      teamName,
+      skipToken,
+      channelId,
+      messageId,
+      membershipType,
+      channelName,
+    } = event.data;
 
     const [organisation] = await db
       .select({
@@ -66,7 +75,7 @@ export const syncReplies = inngest.createFunction(
         logger.warn('Retrieved replies contains invalid data', {
           organisationId,
           tenantId: organisation.tenantId,
-          invalidReplies: replies.invalidReplies,
+          invalidReplies: mapInvalidMessageData(replies.invalidReplies),
         });
       }
 
@@ -85,6 +94,7 @@ export const syncReplies = inngest.createFunction(
       const objects = validReplies.map((reply) => {
         return formatDataProtectionObject({
           teamId,
+          teamName,
           messageId,
           channelId,
           channelName,
