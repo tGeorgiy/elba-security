@@ -2,18 +2,18 @@ import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getDelta } from '@/connectors/delta/get-delta';
+import { getDelta } from '@/connectors/one-drive/delta/get-delta';
+import { env } from '@/common/env';
 import { subscriptionToDrive } from '../subscriptions/subscription-to-drives';
 
 export const initializeDelta = inngest.createFunction(
   {
-    id: 'initialize-data-protection-delta',
+    id: 'one-drive-initialize-data-protection-delta',
     concurrency: {
       key: 'event.data.siteId',
-      limit: 1,
+      limit: env.MICROSOFT_DATA_PROTECTION_ITEMS_SYNC_CONCURRENCY,
     },
     priority: {
       run: 'event.data.isFirstSync ? 600 : 0',
@@ -28,7 +28,7 @@ export const initializeDelta = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/data_protection.initialize_delta.requested' },
   async ({ event, step }) => {

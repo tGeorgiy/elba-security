@@ -3,7 +3,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import * as authConnector from '@/connectors/auth/get-token';
+import * as authConnector from '@/connectors/one-drive/auth/get-token';
 import * as crypto from '@/common/crypto';
 import { setupOrganisation } from './service';
 

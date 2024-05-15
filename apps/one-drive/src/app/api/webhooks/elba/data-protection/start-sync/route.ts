@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server';
 import { parseWebhookEventData } from '@elba-security/sdk';
-import { env } from '@/env';
 import { startSync } from './service';
 
-export const preferredRegion = env.VERCEL_PREFERRED_REGION;
+export const preferredRegion = 'fra1';
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 

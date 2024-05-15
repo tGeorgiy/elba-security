@@ -1,16 +1,16 @@
 import type { DataProtectionObject, DataProtectionObjectPermission } from '@elba-security/sdk';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { env } from '@/env';
+import { env } from '@/common/env';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
-import { getItems } from '@/connectors/share-point/items';
-import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
-import { getAllItemPermissions } from '@/connectors/share-point/permissions';
-import { getElbaClient } from '@/connectors/elba/client';
+import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/items';
+import { getItems } from '@/connectors/one-drive/share-point/items';
+import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share-point/permissions';
+import { getAllItemPermissions } from '@/connectors/one-drive/share-point/permissions';
+import { createElbaClient } from '@/connectors/elba/client';
 
 export type ItemsWithPermisions = {
   item: MicrosoftDriveItem;
@@ -191,7 +191,7 @@ export const syncItems = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/items.sync.triggered' },
   async ({ event, step }) => {
@@ -295,7 +295,7 @@ export const syncItems = inngest.createFunction(
 
       if (!dataProtectionItems.length) return { parentPermissions, setPaginated };
 
-      const elba = getElbaClient({ organisationId, region: organisation.region });
+      const elba = createElbaClient({ organisationId, region: organisation.region });
 
       await elba.dataProtection.updateObjects({
         objects: dataProtectionItems,

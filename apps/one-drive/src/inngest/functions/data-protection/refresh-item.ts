@@ -2,20 +2,20 @@ import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getAllItemPermissions } from '@/connectors/share-point/permissions';
-import { getItem } from '@/connectors/share-point/item';
-import { getElbaClient } from '@/connectors/elba/client';
+import { getAllItemPermissions } from '@/connectors/one-drive/share-point/permissions';
+import { getItem } from '@/connectors/one-drive/share-point/item';
+import { createElbaClient } from '@/connectors/elba/client';
+import { env } from '@/common/env';
 import { formatDataProtetionItems } from './sync-items';
 
 export const refreshItem = inngest.createFunction(
   {
-    id: 'refresh-data-protection-objects',
+    id: 'one-drive-refresh-data-protection-objects',
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 10,
+      limit: env.MICROSOFT_DATA_PROTECTION_REFRESH_DELETE_CONCURRENCY,
     },
     cancelOn: [
       {
@@ -27,7 +27,7 @@ export const refreshItem = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/data_protection.refresh_object.requested' },
   async ({ event, step }) => {
@@ -52,7 +52,7 @@ export const refreshItem = inngest.createFunction(
     await step.run('get-item-permissions', async () => {
       const token = await decrypt(organisation.token);
 
-      const elba = getElbaClient({ organisationId, region: organisation.region });
+      const elba = createElbaClient({ organisationId, region: organisation.region });
 
       const [item, { permissions }] = await Promise.all([
         getItem({ token, siteId, driveId, itemId }),

@@ -1,11 +1,11 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import { getDrives } from '@/connectors/share-point/drives';
+import { getDrives } from '@/connectors/one-drive/share-point/drives';
+import { env } from '@/common/env';
 
 export const syncDrives = inngest.createFunction(
   {
@@ -15,7 +15,7 @@ export const syncDrives = inngest.createFunction(
     },
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 1,
+      limit: env.MICROSOFT_DATA_PROTECTION_SYNC_CONCURRENCY,
     },
     cancelOn: [
       {
@@ -27,7 +27,7 @@ export const syncDrives = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/drives.sync.triggered' },
   async ({ event, step }) => {

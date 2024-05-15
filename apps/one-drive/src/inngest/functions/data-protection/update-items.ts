@@ -1,15 +1,15 @@
 import { and, eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { env } from '@/env';
+import { env } from '@/common/env';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import type { Delta } from '@/connectors/delta/get-delta';
-import { getDelta } from '@/connectors/delta/get-delta';
-import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
+import type { Delta } from '@/connectors/one-drive/delta/get-delta';
+import { getDelta } from '@/connectors/one-drive/delta/get-delta';
+import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/items';
 import { MicrosoftError } from '@/common/error';
-import { getElbaClient } from '@/connectors/elba/client';
+import { createElbaClient } from '@/connectors/elba/client';
 import type { ItemsWithPermisions } from './sync-items';
 import {
   formatDataProtetionItems,
@@ -31,7 +31,7 @@ export const parsedDeltaState = (delta: Delta[]): ParsedDelta => {
   return delta.reduce<ParsedDelta>(
     (acc, el) => {
       if (el.deleted?.state === 'deleted') acc.deleted.push(el.id);
-      else acc.updated.push(el);
+      else acc.updated.push(el as MicrosoftDriveItem);
 
       return acc;
     },
@@ -78,7 +78,7 @@ export const updateItems = inngest.createFunction(
       key: 'event.data.tenantId',
       limit: env.MICROSOFT_DATA_PROTECTION_ITEMS_SYNC_CONCURRENCY,
     },
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/update-items.triggered' },
   async ({ event, step }) => {
@@ -122,7 +122,7 @@ export const updateItems = inngest.createFunction(
 
     const { deleted, updated } = parsedDeltaState(delta);
 
-    const elba = getElbaClient({ organisationId: record.organisationId, region: record.region });
+    const elba = createElbaClient({ organisationId: record.organisationId, region: record.region });
 
     if (updated.length) {
       itemIdsWithoutPermissions = await step.run('update elba items', async () => {
@@ -148,7 +148,11 @@ export const updateItems = inngest.createFunction(
 
         if (!dataProtectionItems.length) {
           const reduced = itemsWithPermisions.reduce<string[]>((acc, itemWithPermisions) => {
-            if (!itemWithPermisions.permissions.length && itemWithPermisions.item.name !== 'root')
+            if (
+              !itemWithPermisions.permissions.length &&
+              itemWithPermisions.item.name !== 'root' &&
+              !toDelete.includes(itemWithPermisions.item.id)
+            )
               acc.push(itemWithPermisions.item.id);
             return acc;
           }, []);

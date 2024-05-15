@@ -2,7 +2,7 @@ import { addSeconds } from 'date-fns/addSeconds';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import { getToken } from '@/connectors/auth/get-token';
+import { getToken } from '@/connectors/one-drive/auth/get-token';
 import { encrypt } from '@/common/crypto';
 
 type SetupOrganisationParams = {

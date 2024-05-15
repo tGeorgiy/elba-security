@@ -1,7 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as removeSubscriptionConnector from '@/connectors/subscription/remove-subscription';
+import * as removeSubscriptionConnector from '@/connectors/one-drive/subscription/remove-subscription';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';

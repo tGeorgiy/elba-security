@@ -4,12 +4,10 @@ import { NonRetriableError } from 'inngest';
 import { logger } from '@elba-security/logger';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getUsers } from '@/connectors/users/get-users';
-import type { MicrosoftUser } from '@/connectors/users/get-users';
-import { getElbaClient } from '@/connectors/elba/client';
+import { createElbaClient } from '@/connectors/elba/client';
+import { getUsers, type MicrosoftUser } from '@/connectors/one-drive/users/get-users';
 
 const formatElbaUser = (user: MicrosoftUser): User => ({
   id: user.id,
@@ -38,7 +36,7 @@ export const syncUsers = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.USERS_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/users.sync.triggered' },
   async ({ event, step }) => {
@@ -57,7 +55,7 @@ export const syncUsers = inngest.createFunction(
       throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);
     }
 
-    const elba = getElbaClient({ organisationId, region: organisation.region });
+    const elba = createElbaClient({ organisationId, region: organisation.region });
 
     const nextSkipToken = await step.run('paginate', async () => {
       const result = await getUsers({
@@ -74,9 +72,11 @@ export const syncUsers = inngest.createFunction(
         });
       }
 
-      await elba.users.update({
-        users: result.validUsers.map(formatElbaUser),
-      });
+      if (result.validUsers.length > 0) {
+        await elba.users.update({
+          users: result.validUsers.map(formatElbaUser),
+        });
+      }
 
       return result.nextSkipToken;
     });
