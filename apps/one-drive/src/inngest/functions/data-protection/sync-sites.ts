@@ -2,21 +2,21 @@ import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { getSites } from '@/connectors/share-point/sites';
-import { getElbaClient } from '@/connectors/elba/client';
+import { getSites } from '@/connectors/one-drive/share-point/sites';
+import { createElbaClient } from '@/connectors/elba/client';
+import { env } from '@/common/env';
 
 export const syncSites = inngest.createFunction(
   {
-    id: 'synchronize-data-protection-objects',
+    id: 'one-drive-synchronize-data-protection-objects',
     priority: {
       run: 'event.data.isFirstSync ? 600 : 0',
     },
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 1,
+      limit: env.MICROSOFT_DATA_PROTECTION_SYNC_CONCURRENCY,
     },
     cancelOn: [
       {
@@ -28,7 +28,7 @@ export const syncSites = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/data_protection.sync.requested' },
   async ({ event, step }) => {
@@ -97,7 +97,7 @@ export const syncSites = inngest.createFunction(
     }
 
     await step.run('elba-permissions-delete', async () => {
-      const elba = getElbaClient({ organisationId, region: organisation.region });
+      const elba = createElbaClient({ organisationId, region: organisation.region });
 
       await elba.dataProtection.deleteObjects({
         syncedBefore: new Date(syncStartedAt).toISOString(),

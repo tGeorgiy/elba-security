@@ -1,8 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
-import { env } from '@/env';
-import { getElbaClient } from '@/connectors/elba/client';
+import { createElbaClient } from '@/connectors/elba/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
 
@@ -12,7 +11,7 @@ export const removeOrganisation = inngest.createFunction(
     priority: {
       run: '600',
     },
-    retries: env.REMOVE_ORGANISATION_MAX_RETRY,
+    retries: 5,
   },
   {
     event: 'one-drive/app.uninstalled.requested',
@@ -60,7 +59,7 @@ export const removeOrganisation = inngest.createFunction(
       await Promise.all(eventsWait);
     }
 
-    const elba = getElbaClient({ organisationId, region: organisation.region });
+    const elba = createElbaClient({ organisationId, region: organisation.region });
 
     await elba.connectionStatus.update({ hasError: true });
 

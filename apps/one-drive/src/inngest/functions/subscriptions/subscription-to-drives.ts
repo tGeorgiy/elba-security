@@ -1,18 +1,18 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { createSubscription } from '@/connectors/subscription/create-subcsription';
+import { createSubscription } from '@/connectors/one-drive/subscription/create-subcsription';
 import { decrypt } from '@/common/crypto';
+import { env } from '@/common/env';
 
 export const subscriptionToDrive = inngest.createFunction(
   {
-    id: 'subscribe-to-drive',
+    id: 'one-drive-subscribe-to-drive',
     concurrency: {
       key: 'event.data.siteId',
-      limit: 1,
+      limit: env.MICROSOFT_CREATE_SUBSCRIPTION_CONCURRENCY,
     },
     priority: {
       run: 'event.data.isFirstSync ? 600 : 0',
@@ -27,7 +27,7 @@ export const subscriptionToDrive = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/drives.subscription.triggered' },
   async ({ event }) => {

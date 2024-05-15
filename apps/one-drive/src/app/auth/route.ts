@@ -2,10 +2,10 @@ import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { logger } from '@elba-security/logger';
 import { ElbaInstallRedirectResponse } from '@elba-security/nextjs';
-import { env } from '@/env';
+import { env } from '@/common/env';
 import { setupOrganisation } from './service';
 
-export const preferredRegion = env.VERCEL_PREFERRED_REGION;
+export const preferredRegion = 'fra1';
 export const runtime = 'edge';
 export const dynamic = 'force-dynamic';
 

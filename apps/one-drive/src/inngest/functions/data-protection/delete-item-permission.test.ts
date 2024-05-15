@@ -1,7 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as deleteItemPermisionConnector from '@/connectors/share-point/delete-item-permission';
+import * as deleteItemPermisionConnector from '@/connectors/one-drive/share-point/delete-item-permission';
 import { organisationsTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';

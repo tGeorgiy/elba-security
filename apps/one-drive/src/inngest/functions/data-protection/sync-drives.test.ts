@@ -1,8 +1,8 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as drivesConnector from '@/connectors/share-point/drives';
-import type { MicrosoftDrive } from '@/connectors/share-point/drives';
+import * as drivesConnector from '@/connectors/one-drive/share-point/drives';
+import type { MicrosoftDrive } from '@/connectors/one-drive/share-point/drives';
 import { encrypt } from '@/common/crypto';
 import { organisationsTable } from '@/database/schema';
 import { db } from '@/database/client';

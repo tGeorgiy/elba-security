@@ -3,10 +3,10 @@ import { createInngestFunctionMock, spyOnElba } from '@elba-security/test-utils'
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
+import { env } from '@/common/env';
 import { encrypt } from '@/common/crypto';
-import type { MicrosoftUser } from '@/connectors/users/get-users';
-import * as usersConnector from '@/connectors/users/get-users';
+import type { MicrosoftUser } from '@/connectors/one-drive/users/get-users';
+import * as usersConnector from '@/connectors/one-drive/users/get-users';
 import { syncUsers } from './sync-users';
 
 const token = 'test-token';

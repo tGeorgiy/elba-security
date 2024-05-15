@@ -5,9 +5,8 @@ import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
-import { env } from '@/env';
 import { encrypt } from '@/common/crypto';
-import { getToken } from '@/connectors/auth/get-token';
+import { getToken } from '@/connectors/one-drive/auth/get-token';
 
 export const refreshToken = inngest.createFunction(
   {
@@ -26,13 +25,13 @@ export const refreshToken = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.TOKEN_REFRESH_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/token.refresh.requested' },
   async ({ event, step }) => {
     const { organisationId, expiresAt } = event.data;
 
-    await step.sleepUntil('wait-before-expiration', subMinutes(new Date(expiresAt), 5));
+    await step.sleepUntil('wait-before-expiration', subMinutes(new Date(expiresAt), 15));
 
     const nextExpiresAt = await step.run('refresh-token', async () => {
       const [organisation] = await db

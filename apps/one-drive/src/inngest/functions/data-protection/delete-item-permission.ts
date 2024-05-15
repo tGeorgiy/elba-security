@@ -2,17 +2,17 @@ import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { deleteItemPermission } from '@/connectors/share-point/delete-item-permission';
+import { deleteItemPermission } from '@/connectors/one-drive/share-point/delete-item-permission';
+import { env } from '@/common/env';
 
 export const deleteDataProtectionItemPermissions = inngest.createFunction(
   {
-    id: 'delete-data-protection-object-permissions',
+    id: 'one-drive-delete-data-protection-object-permissions',
     concurrency: {
       key: 'event.data.organisationId',
-      limit: 1,
+      limit: env.MICROSOFT_DATA_PROTECTION_REFRESH_DELETE_CONCURRENCY,
     },
     cancelOn: [
       {
@@ -24,7 +24,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/data_protection.delete_object_permissions.requested' },
   async ({ event, step }) => {

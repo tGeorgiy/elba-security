@@ -1,14 +1,13 @@
 import { and, eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { inngest } from '@/inngest/client';
-import { env } from '@/env';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
-import { removeSubscription } from '@/connectors/subscription/remove-subscription';
+import { removeSubscription } from '@/connectors/one-drive/subscription/remove-subscription';
 
 export const subscriptionRemove = inngest.createFunction(
   {
-    id: 'subscribe-remove',
+    id: 'one-drive-subscribe-remove',
     cancelOn: [
       {
         event: 'one-drive/app.uninstalled.requested',
@@ -19,7 +18,7 @@ export const subscriptionRemove = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: env.MICROSOFT_DATA_PROTECTION_SYNC_MAX_RETRY,
+    retries: 5,
   },
   { event: 'one-drive/subscription.remove.triggered' },
   async ({ event, step }) => {

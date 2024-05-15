@@ -1,14 +1,14 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock, spyOnElba } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as getItemConnector from '@/connectors/share-point/item';
+import * as getItemConnector from '@/connectors/one-drive/share-point/item';
 import { organisationsTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
-import type { MicrosoftDriveItem } from '@/connectors/share-point/items';
-import type { MicrosoftDriveItemPermissions } from '@/connectors/share-point/permissions';
-import * as permissionsConnector from '@/connectors/share-point/permissions';
-import { env } from '@/env';
+import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/items';
+import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share-point/permissions';
+import * as permissionsConnector from '@/connectors/one-drive/share-point/permissions';
+import { env } from '@/common/env';
 import { refreshItem } from './refresh-item';
 import { formatDataProtetionItems } from './sync-items';
 

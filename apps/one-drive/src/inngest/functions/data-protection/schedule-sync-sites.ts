@@ -1,7 +1,7 @@
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { env } from '@/env';
+import { env } from '@/common/env';
 
 export const scheduleDataProtectionSyncJobs = inngest.createFunction(
   { id: 'one-drive-schedule-folders-and-files-sync' },

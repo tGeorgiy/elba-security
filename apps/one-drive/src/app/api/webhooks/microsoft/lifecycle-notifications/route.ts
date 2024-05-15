@@ -8,9 +8,7 @@ import { handleSubscriptionEvent } from './service';
 export const lifecycleEventSchema = z.object({
   subscriptionId: z.string(),
   lifecycleEvent: z.enum(['reauthorizationRequired', 'subscriptionRemoved']),
-  // resource: z.string(),
   tenantId: z.string(),
-  // subscriptionExpirationDateTime: z.string(),
 });
 
 export async function POST(req: NextRequest) {

@@ -1,8 +1,8 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as sitesConnector from '@/connectors/share-point/sites';
-import type { MicrosoftSite } from '@/connectors/share-point/sites';
+import * as sitesConnector from '@/connectors/one-drive/share-point/sites';
+import type { MicrosoftSite } from '@/connectors/one-drive/share-point/sites';
 import { organisationsTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';

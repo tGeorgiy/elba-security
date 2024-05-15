@@ -4,7 +4,7 @@ import { NonRetriableError } from 'inngest';
 import { eq } from 'drizzle-orm';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import * as authConnector from '@/connectors/auth/get-token';
+import * as authConnector from '@/connectors/one-drive/auth/get-token';
 import { decrypt, encrypt } from '@/common/crypto';
 import { refreshToken } from './refresh-token';
 
@@ -80,7 +80,7 @@ describe('refresh-token', () => {
     expect(step.sleepUntil).toBeCalledTimes(1);
     expect(step.sleepUntil).toBeCalledWith(
       'wait-before-expiration',
-      new Date(expiresAt - 5 * 60 * 1000)
+      new Date(expiresAt - 15 * 60 * 1000)
     );
 
     // check that the function continue the pagination process
