@@ -5,71 +5,17 @@ import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
-import type { Delta } from '@/connectors/one-drive/delta/get-delta';
 import { getDelta } from '@/connectors/one-drive/delta/get-delta';
 import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/items';
 import { MicrosoftError } from '@/common/error';
 import { createElbaClient } from '@/connectors/elba/client';
-import type { ItemsWithPermisions } from './sync-items';
 import {
   formatDataProtetionItems,
   getCkunkedArray,
   getItemsWithPermisionsFromChunks,
-} from './sync-items';
-
-type ParsedDelta = {
-  deleted: string[];
-  updated: MicrosoftDriveItem[];
-};
-
-type ItemsWithPermisionsParsed = {
-  toDelete: string[];
-  toUpdate: ItemsWithPermisions[];
-};
-
-export const parsedDeltaState = (delta: Delta[]): ParsedDelta => {
-  return delta.reduce<ParsedDelta>(
-    (acc, el) => {
-      if (el.deleted?.state === 'deleted') acc.deleted.push(el.id);
-      else acc.updated.push(el as MicrosoftDriveItem);
-
-      return acc;
-    },
-    { deleted: [], updated: [] }
-  );
-};
-
-export const removeInheritedUpdate = (
-  itemsWithPermisions: ItemsWithPermisions[]
-): ItemsWithPermisionsParsed => {
-  return itemsWithPermisions.reduce<ItemsWithPermisionsParsed>(
-    (acc, itemWithPermisions, _, arr) => {
-      const parent = arr.find(
-        ({ item: { id } }) => id === itemWithPermisions.item.parentReference.id
-      );
-
-      if (parent) {
-        const parentPermissionIds = parent.permissions.map(({ id }) => id);
-
-        const filteredPermissions = itemWithPermisions.permissions.filter(
-          (permission) => !parentPermissionIds.includes(permission.id)
-        );
-
-        if (!filteredPermissions.length) {
-          acc.toDelete.push(itemWithPermisions.item.id);
-        } else {
-          acc.toUpdate.push({
-            item: itemWithPermisions.item,
-            permissions: filteredPermissions,
-          });
-        }
-      }
-
-      return acc;
-    },
-    { toDelete: [], toUpdate: [] }
-  );
-};
+  parsedDeltaState,
+  removeInheritedUpdate,
+} from './common/helpers';
 
 export const updateItems = inngest.createFunction(
   {

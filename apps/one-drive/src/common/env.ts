@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 const zEnvInt = () => z.coerce.number().int().positive();
 
-const MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE = 20;
+const MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE = 15;
 
 export const env = z
   .object({
@@ -16,7 +16,6 @@ export const env = z
     MICROSOFT_API_URL: z.string().url().default('https://graph.microsoft.com/v1.0'),
     MICROSOFT_AUTH_API_URL: z.string().url().default('https://login.microsoftonline.com'),
     MICROSOFT_DATA_PROTECTION_SYNC_CONCURRENCY: zEnvInt().min(1).default(2),
-    MICROSOFT_DATA_PROTECTION_REFRESH_DELETE_CONCURRENCY: zEnvInt().min(1).default(10),
     MICROSOFT_DATA_PROTECTION_ITEMS_SYNC_CONCURRENCY: zEnvInt().min(1).default(1),
     MICROSOFT_DATA_PROTECTION_SYNC_CHUNK_SIZE: zEnvInt().min(1).default(100),
     // We need to set lower value because after fetching items list we will fetch item-permissions without delay
@@ -28,8 +27,9 @@ export const env = z
       .min(1)
       .max(MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE_DEFAULT_VALUE)
       .default(15),
+    MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 23 25 * *'),
+    MICROSOFT_DATA_PROTECTION_REFRESH_DELETE_CONCURRENCY: zEnvInt().min(1).default(10),
     MICROSOFT_CREATE_SUBSCRIPTION_CONCURRENCY: zEnvInt().min(1).default(10),
-    MICROSOFT_DATA_PROTECTION_CRON_SYNC: z.string().default('0 0 23 25 * *'),
     SUBSCRIBE_EXPIRATION_DAYS: z.string().default('1'),
     WEBHOOK_URL: z.string().url(),
     ELBA_API_KEY: z.string().min(1),
@@ -43,6 +43,6 @@ export const env = z
     USERS_SYNC_CRON: z.string().default('0 0 * * 1-5'),
     USERS_SYNC_BATCH_SIZE: zEnvInt().default(100),
     SITES_SYNC_BATCH_SIZE: zEnvInt().default(100),
-    VERCEL_ENV: zEnvInt().optional(),
+    VERCEL_ENV: z.string().min(1).optional(),
   })
   .parse(process.env);

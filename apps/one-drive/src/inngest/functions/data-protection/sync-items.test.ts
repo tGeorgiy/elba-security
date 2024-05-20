@@ -9,8 +9,9 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share
 import { encrypt } from '@/common/crypto';
 import { organisationsTable } from '@/database/schema';
 import { db } from '@/database/client';
-import { syncItems, groupItems, formatDataProtetionItems, removeInheritedSync } from './sync-items';
-import type { ItemsWithPermisions } from './sync-items';
+import { syncItems } from './sync-items';
+import { formatDataProtetionItems, groupItems, removeInheritedSync } from './common/helpers';
+import type { ItemsWithPermisions } from './common/types';
 
 const token = 'test-token';
 
@@ -41,6 +42,7 @@ const createTempData = (title: string, i: number): MicrosoftDriveItem => ({
   parentReference: {
     id: `${title}-parent-id-${i}`,
   },
+  lastModifiedDateTime: `2024-02-23T15:50:0${i}Z`,
 });
 
 const groupedItems: MicrosoftDriveItem[] = Array.from({ length: itemsCount }, (_, i) => {
@@ -235,7 +237,7 @@ describe('sync-items', () => {
     });
   });
 
-  test('should finalize the sync when there is a no next page', async () => {
+  test('should finalize the sync when there is no next page', async () => {
     const nextSkipToken = null;
     const skipToken = 'skip-token';
     const defaultEventsCount = 1;
@@ -288,7 +290,7 @@ describe('sync-items', () => {
             siteId,
             driveId,
             isFirstSync,
-            folder: { id, paginated: false, permissions: ['some-permission-id'] },
+            folder: { id, paginated: false, permissions: [] },
             skipToken: null,
             organisationId: organisation.id,
           },
