@@ -11,9 +11,13 @@ import type { Delta } from '@/connectors/one-drive/delta/get-delta';
 import { env } from '@/common/env';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share-point/permissions';
 import { MicrosoftError } from '@/common/error';
-import { parsedDeltaState, removeInheritedUpdate, updateItems } from './update-items';
-import type { ItemsWithPermisions } from './sync-items';
-import { formatDataProtetionItems } from './sync-items';
+import { updateItems } from './update-items';
+import {
+  formatDataProtetionItems,
+  parsedDeltaState,
+  removeInheritedUpdate,
+} from './common/helpers';
+import type { ItemsWithPermisions } from './common/types';
 
 const updatedCount = 5;
 const deletedCount = 2;

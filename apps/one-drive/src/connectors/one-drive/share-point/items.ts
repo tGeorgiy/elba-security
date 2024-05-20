@@ -17,6 +17,7 @@ export const driveItemSchema = z.object({
       displayName: z.string(),
     }),
   }),
+  lastModifiedDateTime: z.string(),
   folder: z
     .object({
       childCount: z.number(),
@@ -42,7 +43,10 @@ export const getItems = async ({ token, siteId, driveId, folderId, skipToken }: 
 
   const url = new URL(`${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/${urlEnding}`);
   url.searchParams.append('$top', String(env.MICROSOFT_DATA_PROTECTION_ITEM_SYNC_SIZE));
-  url.searchParams.append('$select', 'id,folder,name,webUrl,createdBy,parentReference');
+  url.searchParams.append(
+    '$select',
+    'id,folder,name,webUrl,createdBy,parentReference,lastModifiedDateTime'
+  );
 
   if (skipToken) {
     url.searchParams.append('$skiptoken', skipToken);

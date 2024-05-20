@@ -25,6 +25,7 @@ const items: MicrosoftDriveItem[] = Array.from({ length: 5 }, (_, i) => ({
       email: `some-user-email-${i}`,
     },
   },
+  lastModifiedDateTime: `2016-03-21T20:01:${i}Z`,
   folder: { childCount: i },
   parentReference: {
     id: `some-parent-id-${i}`,

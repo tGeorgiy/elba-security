@@ -10,7 +10,7 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share
 import * as permissionsConnector from '@/connectors/one-drive/share-point/permissions';
 import { env } from '@/common/env';
 import { refreshItem } from './refresh-item';
-import { formatDataProtetionItems } from './sync-items';
+import { formatDataProtetionItems } from './common/helpers';
 
 const token = 'test-token';
 
@@ -39,6 +39,7 @@ const item: MicrosoftDriveItem = {
   parentReference: {
     id: 'some-parent-id-1',
   },
+  lastModifiedDateTime: '2024-02-23T15:50:09Z',
 };
 
 const permissions: MicrosoftDriveItemPermissions[] = Array.from({ length: 10 }, (_, i) => ({
