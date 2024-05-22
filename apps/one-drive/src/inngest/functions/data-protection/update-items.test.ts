@@ -13,7 +13,7 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share
 import { MicrosoftError } from '@/common/error';
 import { updateItems } from './update-items';
 import {
-  formatDataProtetionItems,
+  formatDataProtectionItems,
   parsedDeltaState,
   removeInheritedUpdate,
 } from './common/helpers';
@@ -210,7 +210,7 @@ describe('update-item-and-permissions', () => {
 
     const { toDelete, toUpdate } = removeInheritedUpdate(updateItemsWithPermisionsResult);
 
-    const updateDataProtectionItems = formatDataProtetionItems({
+    const updateDataProtectionItems = formatDataProtectionItems({
       itemsWithPermisions: toUpdate,
       siteId,
       driveId,

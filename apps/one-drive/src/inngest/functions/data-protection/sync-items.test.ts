@@ -10,7 +10,7 @@ import { encrypt } from '@/common/crypto';
 import { organisationsTable } from '@/database/schema';
 import { db } from '@/database/client';
 import { syncItems } from './sync-items';
-import { formatDataProtetionItems, groupItems, removeInheritedSync } from './common/helpers';
+import { formatDataProtectionItems, groupItems, removeInheritedSync } from './common/helpers';
 import type { ItemsWithPermisions } from './common/types';
 
 const token = 'test-token';
@@ -203,7 +203,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems({
+    const dataProtectionItems = formatDataProtectionItems({
       itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
       siteId,
       driveId,
@@ -331,7 +331,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems({
+    const dataProtectionItems = formatDataProtectionItems({
       itemsWithPermisions: removeInheritedSync(
         mockPermissions(itemsCount / 2).map((permission) => permission.id),
         itemsWithPermisionsResult as ItemsWithPermisions[]
@@ -418,7 +418,7 @@ describe('sync-items', () => {
       ),
     }));
 
-    const dataProtectionItems = formatDataProtetionItems({
+    const dataProtectionItems = formatDataProtectionItems({
       itemsWithPermisions: itemsWithPermisionsResult as unknown as ItemsWithPermisions[],
       siteId,
       driveId,

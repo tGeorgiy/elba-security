@@ -9,7 +9,7 @@ import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/item
 import { getItems } from '@/connectors/one-drive/share-point/items';
 import { createElbaClient } from '@/connectors/elba/client';
 import {
-  formatDataProtetionItems,
+  formatDataProtectionItems,
   getCkunkedArray,
   getItemsWithPermisionsFromChunks,
   getParentFolderPermissions,
@@ -126,7 +126,7 @@ export const syncItems = inngest.createFunction(
           driveId
         );
 
-        const dataProtectionItems = formatDataProtetionItems({
+        const dataProtectionItems = formatDataProtectionItems({
           itemsWithPermisions: removeInheritedSync(parentFolderPermissions, itemsWithPermisions),
           siteId,
           driveId,

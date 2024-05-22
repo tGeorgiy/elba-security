@@ -10,7 +10,7 @@ import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/item
 import { MicrosoftError } from '@/common/error';
 import { createElbaClient } from '@/connectors/elba/client';
 import {
-  formatDataProtetionItems,
+  formatDataProtectionItems,
   getCkunkedArray,
   getItemsWithPermisionsFromChunks,
   parsedDeltaState,
@@ -86,7 +86,7 @@ export const updateItems = inngest.createFunction(
 
         const { toDelete, toUpdate } = removeInheritedUpdate(itemsWithPermisions);
 
-        const dataProtectionItems = formatDataProtetionItems({
+        const dataProtectionItems = formatDataProtectionItems({
           itemsWithPermisions: toUpdate,
           siteId,
           driveId,
