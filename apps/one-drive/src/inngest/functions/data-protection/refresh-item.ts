@@ -8,7 +8,7 @@ import { getAllItemPermissions } from '@/connectors/one-drive/share-point/permis
 import { getItem } from '@/connectors/one-drive/share-point/item';
 import { createElbaClient } from '@/connectors/elba/client';
 import { env } from '@/common/env';
-import { formatDataProtetionItems } from './common/helpers';
+import { formatDataProtectionItems } from './common/helpers';
 
 export const refreshItem = inngest.createFunction(
   {
@@ -71,7 +71,7 @@ export const refreshItem = inngest.createFunction(
         return;
       }
 
-      const dataProtectionItem = formatDataProtetionItems({
+      const dataProtectionItem = formatDataProtectionItems({
         itemsWithPermisions: [
           {
             item,

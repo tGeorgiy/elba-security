@@ -10,7 +10,7 @@ import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share
 import * as permissionsConnector from '@/connectors/one-drive/share-point/permissions';
 import { env } from '@/common/env';
 import { refreshItem } from './refresh-item';
-import { formatDataProtetionItems } from './common/helpers';
+import { formatDataProtectionItems } from './common/helpers';
 
 const token = 'test-token';
 
@@ -142,7 +142,7 @@ describe('refresh-object', () => {
       baseUrl: env.ELBA_API_BASE_URL,
     });
 
-    const dataProtectionItem = formatDataProtetionItems({
+    const dataProtectionItem = formatDataProtectionItems({
       itemsWithPermisions: [
         {
           item,

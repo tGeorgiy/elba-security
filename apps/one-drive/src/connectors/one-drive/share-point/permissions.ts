@@ -19,12 +19,16 @@ const grantedToV2Schema = z.object({
 
 const grantedToIdentitiesV2Schema = z
   .array(
-    z.object({
-      user: grantedUserSchema.optional(),
-    })
+    z
+      .object({
+        user: grantedUserSchema.optional(),
+      })
+      .optional()
   )
   .transform((val, ctx) => {
-    const filtered = val.filter((el) => Object.keys(el).length);
+    if (!val.length) return [];
+
+    const filtered = val.filter((el) => el && Object.keys(el).length);
 
     if (!filtered.length) {
       ctx.addIssue({
@@ -44,6 +48,7 @@ const basePSchema = z.object({
   link: z
     .object({
       scope: z.string().optional(),
+      webUrl: z.string().optional(),
     })
     .optional(),
   grantedToV2: grantedToV2Schema.optional(),

@@ -58,16 +58,29 @@ export const formatPermissions = (
         userId: permission.grantedToV2.user.id,
       },
     ];
-  } else if (permission.grantedToIdentitiesV2) {
-    return permission.grantedToIdentitiesV2
-      .filter(({ user }) => user) // Need to check, maybe we can remove this, because user always should be after validation in connector
-      .map(({ user }) => ({
-        id: `${permission.id}-SEPARATOR-${user?.id}`,
-        type: 'user',
-        displayName: user?.displayName,
-        userId: user?.id,
-      })) as DataProtectionObjectPermission[];
+  } else if (permission.link?.scope === 'anonymous') {
+    return [
+      {
+        id: permission.id,
+        type: 'anyone',
+        metadata: {
+          sharedLinks: [permission.link.webUrl],
+        },
+      },
+    ];
   }
+
+  // This part is for link access when we create a link for people that we choose, will be updated in next iterations
+  // else if (permission.link?.scope === 'users') {
+  //   return permission.grantedToIdentitiesV2
+  //     .filter(({ user }) => user) // Need to check, maybe we can remove this, because user always should be after validation in connector
+  //     .map(({ user }) => ({
+  //       id: `${permission.id}-SEPARATOR-${user?.id}`,
+  //       type: 'user',
+  //       displayName: user?.displayName,
+  //       userId: user?.id,
+  //     })) as DataProtectionObjectPermission[];
+  // }
   return [];
 };
 
@@ -113,7 +126,7 @@ export const getItemsWithPermisionsFromChunks = async ({
   return itemsWithPermisions;
 };
 
-export const formatDataProtetionItems = ({
+export const formatDataProtectionItems = ({
   itemsWithPermisions,
   siteId,
   driveId,
@@ -127,7 +140,10 @@ export const formatDataProtetionItems = ({
   for (const { item, permissions } of itemsWithPermisions) {
     if (item.createdBy.user.id) {
       const validPermissions: MicrosoftDriveItemPermissions[] = permissions.filter(
-        (permission) => permission.link?.scope === 'users' || permission.grantedToV2?.user
+        (permission) =>
+          permission.link?.scope === 'users' ||
+          permission.link?.scope === 'anonymous' ||
+          permission.grantedToV2?.user
       );
 
       if (validPermissions.length) {
