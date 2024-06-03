@@ -7,7 +7,6 @@ import { organisationsTable, sharePointTable } from '@/database/schema';
 import { decrypt } from '@/common/crypto';
 import { getDelta } from '@/connectors/one-drive/delta/get-delta';
 import type { MicrosoftDriveItem } from '@/connectors/one-drive/share-point/items';
-import { MicrosoftError } from '@/common/error';
 import { createElbaClient } from '@/connectors/elba/client';
 import {
   formatDataProtectionItems,
@@ -93,19 +92,18 @@ export const updateItems = inngest.createFunction(
         });
 
         if (!dataProtectionItems.length) {
-          const reduced = itemsWithPermisions.reduce<string[]>((acc, itemWithPermisions) => {
-            if (
-              !itemWithPermisions.permissions.length &&
-              itemWithPermisions.item.name !== 'root' &&
-              !toDelete.includes(itemWithPermisions.item.id)
-            )
-              acc.push(itemWithPermisions.item.id);
-            return acc;
-          }, []);
-
-          reduced.push(...toDelete);
-
-          return reduced;
+          return itemsWithPermisions.reduce<string[]>(
+            (acc, itemWithPermisions) => {
+              if (
+                !itemWithPermisions.permissions.length &&
+                itemWithPermisions.item.name !== 'root' &&
+                !toDelete.includes(itemWithPermisions.item.id)
+              )
+                acc.push(itemWithPermisions.item.id);
+              return acc;
+            },
+            [...toDelete]
+          );
         }
 
         await elba.dataProtection.updateObjects({
@@ -138,7 +136,7 @@ export const updateItems = inngest.createFunction(
       };
     }
 
-    if (!newDeltaToken) throw new MicrosoftError('Delta token not found!');
+    if (!newDeltaToken) throw new NonRetriableError('Delta token not found!');
 
     await db
       .update(sharePointTable)

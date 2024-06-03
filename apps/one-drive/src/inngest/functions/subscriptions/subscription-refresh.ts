@@ -3,18 +3,18 @@ import { NonRetriableError } from 'inngest';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
-import { refreshSubscription } from '@/connectors/one-drive/subscription/refresh-subscription';
+import { refreshSubscription } from '@/connectors/one-drive/subscription/subscriptions';
 
 export const subscriptionRefresh = inngest.createFunction(
   {
     id: 'one-drive-subscribe-refresh',
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -43,10 +43,18 @@ export const subscriptionRefresh = inngest.createFunction(
       );
     }
 
-    await refreshSubscription(record.token, subscriptionId);
+    const subscription = await refreshSubscription(record.token, subscriptionId);
 
-    return {
-      status: 'completed',
-    };
+    await db
+      .update(sharePointTable)
+      .set({
+        subscriptionExpirationDate: subscription.expirationDateTime,
+      })
+      .where(
+        and(
+          eq(sharePointTable.organisationId, organisationId),
+          eq(sharePointTable.subscriptionId, subscriptionId)
+        )
+      );
   }
 );

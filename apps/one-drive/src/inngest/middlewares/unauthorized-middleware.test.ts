@@ -104,7 +104,7 @@ describe('unauthorized middleware', () => {
 
     expect(send).toBeCalledTimes(1);
     expect(send).toBeCalledWith({
-      name: 'one-drive/app.uninstalled.requested',
+      name: 'one-drive/app.uninstalled',
       data: {
         organisationId: organisation.id,
       },

@@ -1,13 +1,7 @@
 import { z } from 'zod';
 import { logger } from '@elba-security/logger';
 import { inngest } from '@/inngest/client';
-import type {
-  ParsedType,
-  SelectFieldsType,
-  SubscriptionPayload,
-  UpdateItemsData,
-  WebhookResponse,
-} from './types';
+import type { ParsedType, SelectFieldsType, SubscriptionPayload, UpdateItemsData } from './types';
 
 export const parsedSchema = z.object({
   siteId: z.string().min(1),
@@ -45,11 +39,11 @@ export const parseResourceString = (resourse: string, getFields: SelectFieldsTyp
   return parsedSchema.safeParse(result);
 };
 
-export const handleWebhook = async (data: WebhookResponse<SubscriptionPayload>) => {
-  if (!data.value.length) return;
+export const handleWebhook = async (data: SubscriptionPayload[]) => {
+  if (!data.length) return;
 
   await inngest.send(
-    data.value.reduce<UpdateItemsData[]>((acc, payload) => {
+    data.reduce<UpdateItemsData[]>((acc, payload) => {
       const parsed = parseResourceString(payload.resource, selectFields);
 
       if (!parsed.success) {

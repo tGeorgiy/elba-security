@@ -14,7 +14,7 @@ export const removeOrganisation = inngest.createFunction(
     retries: 5,
   },
   {
-    event: 'one-drive/app.uninstalled.requested',
+    event: 'one-drive/app.uninstalled',
   },
   async ({ event, step }) => {
     const { organisationId } = event.data;

@@ -1,7 +1,6 @@
 import type { User } from '@elba-security/sdk';
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
-import { logger } from '@elba-security/logger';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
@@ -28,18 +27,18 @@ export const syncUsers = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
     retries: 5,
   },
   { event: 'one-drive/users.sync.triggered' },
-  async ({ event, step }) => {
+  async ({ event, step, logger }) => {
     const { organisationId, syncStartedAt, skipToken } = event.data;
 
     const [organisation] = await db

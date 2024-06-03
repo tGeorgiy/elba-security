@@ -23,6 +23,7 @@ const item: MicrosoftDriveItem = {
       email: `some-user-email-1`,
     },
   },
+  lastModifiedDateTime: '2024-02-23T15:50:09Z',
   parentReference: {
     id: `some-parent-id-1`,
   },
@@ -101,7 +102,7 @@ describe('get-item connector', () => {
       ).rejects.toBeInstanceOf(MicrosoftError);
     });
 
-    test('should return "notFound" when the itemId is invalid', async () => {
+    test('should return "null" when the itemId is invalid', async () => {
       await expect(
         getItem({
           token: validToken,
@@ -109,7 +110,7 @@ describe('get-item connector', () => {
           driveId,
           itemId: 'invalid-itemId',
         })
-      ).resolves.toStrictEqual('notFound');
+      ).resolves.toStrictEqual(null);
     });
   });
 });

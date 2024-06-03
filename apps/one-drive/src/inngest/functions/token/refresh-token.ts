@@ -1,6 +1,6 @@
 import { subMinutes } from 'date-fns/subMinutes';
 import { addSeconds } from 'date-fns/addSeconds';
-import { and, eq } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
@@ -17,11 +17,11 @@ export const refreshToken = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -39,7 +39,7 @@ export const refreshToken = inngest.createFunction(
           tenantId: organisationsTable.tenantId,
         })
         .from(organisationsTable)
-        .where(and(eq(organisationsTable.id, organisationId)));
+        .where(eq(organisationsTable.id, organisationId));
 
       if (!organisation) {
         throw new NonRetriableError(`Could not retrieve organisation with id=${organisationId}`);

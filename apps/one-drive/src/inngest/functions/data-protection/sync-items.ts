@@ -29,11 +29,11 @@ export const syncItems = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
     ],
@@ -181,16 +181,16 @@ export const syncItems = inngest.createFunction(
             driveId,
           },
         }),
-        step.sendEvent('initialize-delta', {
-          name: 'one-drive/data_protection.initialize_delta.requested',
-          data: {
-            organisationId,
-            siteId,
-            driveId,
-            isFirstSync: true,
-            skipToken: null,
-          },
-        }),
+        // step.sendEvent('initialize-delta', {
+        //   name: 'one-drive/data_protection.initialize_delta.requested',
+        //   data: {
+        //     organisationId,
+        //     siteId,
+        //     driveId,
+        //     isFirstSync: true,
+        //     skipToken: null,
+        //   },
+        // }),
       ]);
     }
 

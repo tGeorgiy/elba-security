@@ -60,7 +60,7 @@ describe('setupOrganisation', () => {
     expect(send).toBeCalledTimes(1);
     expect(send).toBeCalledWith([
       {
-        name: 'one-drive/app.install.requested',
+        name: 'one-drive/app.installed',
         data: {
           organisationId: organisation.id,
         },
@@ -116,7 +116,7 @@ describe('setupOrganisation', () => {
     expect(send).toBeCalledTimes(1);
     expect(send).toBeCalledWith([
       {
-        name: 'one-drive/app.install.requested',
+        name: 'one-drive/app.installed',
         data: {
           organisationId: organisation.id,
         },

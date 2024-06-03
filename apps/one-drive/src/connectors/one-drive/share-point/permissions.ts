@@ -67,25 +67,27 @@ export const validateAndParsePermission = (
   | null => {
   const result = basePSchema.safeParse(data);
 
-  if (result.success) {
-    const grantedToV2ParseResult = grantedToV2Schema.safeParse(result.data.grantedToV2);
-    const grantedToIdentitiesV2ParseResult = grantedToIdentitiesV2Schema.safeParse(
-      result.data.grantedToIdentitiesV2
-    );
-    if (grantedToV2ParseResult.success) {
-      return {
-        ...result.data,
-        grantedToV2: grantedToV2ParseResult.data,
-      };
-    }
-    if (grantedToIdentitiesV2ParseResult.success) {
-      return {
-        ...result.data,
-        grantedToIdentitiesV2: grantedToIdentitiesV2ParseResult.data,
-      };
-    }
-    logger.warn('Retrieved permission is invalid, or empty permissions array', result);
+  if (!result.success) {
+    return null;
   }
+
+  const grantedToV2ParseResult = grantedToV2Schema.safeParse(result.data.grantedToV2);
+  const grantedToIdentitiesV2ParseResult = grantedToIdentitiesV2Schema.safeParse(
+    result.data.grantedToIdentitiesV2
+  );
+  if (grantedToV2ParseResult.success) {
+    return {
+      ...result.data,
+      grantedToV2: grantedToV2ParseResult.data,
+    };
+  }
+  if (grantedToIdentitiesV2ParseResult.success) {
+    return {
+      ...result.data,
+      grantedToIdentitiesV2: grantedToIdentitiesV2ParseResult.data,
+    };
+  }
+  logger.warn('Retrieved permission is invalid, or empty permissions array', result);
   return null;
 };
 
@@ -95,6 +97,10 @@ type GetPermissionsParams = {
   driveId: string;
   itemId: string;
   skipToken?: string | null;
+};
+
+type DeleteItemPermissionParams = GetPermissionsParams & {
+  permissionId: string;
 };
 
 export type MicrosoftDriveItemPermissions = z.infer<typeof basePSchema>;
@@ -168,4 +174,27 @@ export const getItemPermissions = async ({
   const nextSkipToken = getNextSkipTokenFromNextLink(data['@odata.nextLink']);
 
   return { permissions: data.value, nextSkipToken };
+};
+
+export const deleteItemPermission = async ({
+  token,
+  siteId,
+  driveId,
+  itemId,
+  permissionId,
+}: DeleteItemPermissionParams): Promise<void> => {
+  const url = new URL(
+    `${env.MICROSOFT_API_URL}/sites/${siteId}/drives/${driveId}/items/${itemId}/permissions/${permissionId}`
+  );
+
+  const response = await fetch(url, {
+    method: 'DELETE',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!response.ok) {
+    throw new MicrosoftError('Could not delete permission', { response });
+  }
 };

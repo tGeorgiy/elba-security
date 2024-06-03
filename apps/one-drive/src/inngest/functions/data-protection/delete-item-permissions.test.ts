@@ -1,12 +1,12 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as deleteItemPermisionConnector from '@/connectors/one-drive/share-point/delete-item-permission';
 import { organisationsTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
 import { MicrosoftError } from '@/common/error';
-import { deleteDataProtectionItemPermissions } from './delete-item-permission';
+import * as deleteItemPermisionConnector from '@/connectors/one-drive/share-point/permissions';
+import { deleteDataProtectionItemPermissions } from './delete-item-permissions';
 
 const token = 'test-token';
 
@@ -14,6 +14,7 @@ const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const itemId = 'some-item-id';
 const notFoundPermissionId = 'not-found-permission-id';
+const unexpectedFailedPermissionId = 'unexpected-failed-permission-id';
 
 const organisation = {
   id: '45a76301-f1dd-4a77-b12f-9d7d3fca3c90',
@@ -24,7 +25,7 @@ const organisation = {
 
 const permissions: string[] = Array.from({ length: 5 }, (_, i) => `some-permission-id-${i}`);
 
-const notFoundPermissionArray = [...permissions, notFoundPermissionId];
+const permissionArray = [...permissions, notFoundPermissionId, unexpectedFailedPermissionId];
 
 const setupData = {
   id: itemId,
@@ -68,6 +69,7 @@ describe('delete-object', () => {
     await expect(result).resolves.toStrictEqual({
       deletedPermissions: permissions,
       notFoundPermissions: [],
+      unexpectedFailedPermissions: [],
     });
 
     expect(step.run).toBeCalledTimes(permissions.length);
@@ -95,27 +97,35 @@ describe('delete-object', () => {
             })
           );
         }
+        if (permissionId === unexpectedFailedPermissionId) {
+          return Promise.reject(
+            new MicrosoftError('Could not delete item permission', {
+              response: new Response(undefined, { status: 403 }),
+            })
+          );
+        }
         return Promise.resolve();
       }
     );
 
     const [result, { step }] = setup({
       ...setupData,
-      permissions: notFoundPermissionArray,
+      permissions: permissionArray,
     });
 
     await expect(result).resolves.toStrictEqual({
       deletedPermissions: permissions,
       notFoundPermissions: [notFoundPermissionId],
+      unexpectedFailedPermissions: [unexpectedFailedPermissionId],
     });
 
-    expect(step.run).toBeCalledTimes(notFoundPermissionArray.length);
+    expect(step.run).toBeCalledTimes(permissionArray.length);
     expect(deleteItemPermisionConnector.deleteItemPermission).toBeCalledTimes(
-      notFoundPermissionArray.length
+      permissionArray.length
     );
 
-    for (let i = 0; i < notFoundPermissionArray.length; i++) {
-      const permissionId = notFoundPermissionArray[i];
+    for (let i = 0; i < permissionArray.length; i++) {
+      const permissionId = permissionArray[i];
       expect(deleteItemPermisionConnector.deleteItemPermission).nthCalledWith(i + 1, {
         token,
         itemId,

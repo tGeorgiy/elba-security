@@ -1,9 +1,10 @@
 import { eq } from 'drizzle-orm';
 import { NonRetriableError } from 'inngest';
+import { v4 as uuidv4 } from 'uuid';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import { createSubscription } from '@/connectors/one-drive/subscription/create-subcsription';
+import { createSubscription } from '@/connectors/one-drive/subscription/subscriptions';
 import { decrypt } from '@/common/crypto';
 import { env } from '@/common/env';
 
@@ -19,11 +20,11 @@ export const subscriptionToDrive = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -46,11 +47,13 @@ export const subscriptionToDrive = inngest.createFunction(
 
     const changeType = 'updated';
     const resource = `sites/${siteId}/drives/${driveId}/root`;
+    const clientState = uuidv4();
 
     return createSubscription({
       token: await decrypt(organisation.token),
       changeType,
       resource,
+      clientState,
     });
   }
 );

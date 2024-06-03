@@ -33,7 +33,7 @@ export const setupOrganisation = async ({
 
   await inngest.send([
     {
-      name: 'one-drive/app.install.requested',
+      name: 'one-drive/app.installed',
       data: {
         organisationId,
       },
