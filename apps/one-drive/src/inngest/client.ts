@@ -2,7 +2,6 @@ import { EventSchemas, Inngest } from 'inngest';
 import { sentryMiddleware } from '@elba-security/inngest';
 import { logger } from '@elba-security/logger';
 import { rateLimitMiddleware } from './middlewares/rate-limit-middleware';
-import { unauthorizedMiddleware } from './middlewares/unauthorized-middleware';
 
 export const inngest = new Inngest({
   id: 'one-drive',
@@ -15,12 +14,12 @@ export const inngest = new Inngest({
         skipToken: string | null;
       };
     };
-    'one-drive/app.install.requested': {
+    'one-drive/app.installed': {
       data: {
         organisationId: string;
       };
     };
-    'one-drive/app.uninstalled.requested': {
+    'one-drive/app.uninstalled': {
       data: {
         organisationId: string;
       };
@@ -145,6 +144,6 @@ export const inngest = new Inngest({
       };
     };
   }>(),
-  middleware: [rateLimitMiddleware, unauthorizedMiddleware, sentryMiddleware],
+  middleware: [rateLimitMiddleware, sentryMiddleware],
   logger,
 });

@@ -1,7 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as refreshSubscriptionConnector from '@/connectors/one-drive/subscription/refresh-subscription';
+import * as refreshSubscriptionConnector from '@/connectors/one-drive/subscription/subscriptions';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
@@ -14,6 +14,7 @@ const driveId = 'some-drive-id';
 const subscriptionId = 'some-subscription-id';
 const tenantId = 'some-tenant-id';
 const deltaToken = 'some-delta-token';
+const clientState = 'some-client-state';
 
 const organisation = {
   id: organisationId,
@@ -28,12 +29,19 @@ const sharePoint = {
   driveId,
   subscriptionId,
   subscriptionExpirationDate: '2024-04-25 00:00:00.000000',
+  subscriptionClientState: clientState,
   delta: deltaToken,
 };
 
 const setupData = {
   subscriptionId: sharePoint.subscriptionId,
   organisationId: organisation.id,
+};
+
+const subscription = {
+  id: subscriptionId,
+  clientState,
+  expirationDateTime: sharePoint.subscriptionExpirationDate,
 };
 
 const setup = createInngestFunctionMock(
@@ -50,12 +58,17 @@ describe('subscription-refresh', () => {
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
 
-        set: { subscriptionId: sharePoint.subscriptionId, delta: sharePoint.delta },
+        set: {
+          subscriptionId: sharePoint.subscriptionId,
+          subscriptionExpirationDate: sharePoint.subscriptionExpirationDate,
+          subscriptionClientState: sharePoint.subscriptionClientState,
+          delta: sharePoint.delta,
+        },
       });
   });
 
   test('should abort refreshing when record not found', async () => {
-    vi.spyOn(refreshSubscriptionConnector, 'refreshSubscription').mockResolvedValue(undefined);
+    vi.spyOn(refreshSubscriptionConnector, 'refreshSubscription').mockResolvedValue(subscription);
 
     const [result] = setup({
       ...setupData,
@@ -68,11 +81,11 @@ describe('subscription-refresh', () => {
   });
 
   test('should run refreshSubscription when data is valid', async () => {
-    vi.spyOn(refreshSubscriptionConnector, 'refreshSubscription').mockResolvedValue(undefined);
+    vi.spyOn(refreshSubscriptionConnector, 'refreshSubscription').mockResolvedValue(subscription);
 
     const [result] = setup(setupData);
 
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toBeUndefined();
 
     expect(refreshSubscriptionConnector.refreshSubscription).toBeCalledTimes(1);
     expect(refreshSubscriptionConnector.refreshSubscription).toBeCalledWith(

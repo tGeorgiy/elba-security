@@ -115,7 +115,7 @@ describe('refresh-object', () => {
 
     const [result, { step }] = setup(setupData);
 
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toBeUndefined();
     expect(step.run).toBeCalledTimes(1);
 
     expect(getItemConnector.getItem).toBeCalledTimes(1);
@@ -164,7 +164,7 @@ describe('refresh-object', () => {
   test('should delete elba object when item not found', async () => {
     const elba = spyOnElba();
 
-    vi.spyOn(getItemConnector, 'getItem').mockResolvedValue('notFound');
+    vi.spyOn(getItemConnector, 'getItem').mockResolvedValue(null);
     vi.spyOn(permissionsConnector, 'getAllItemPermissions').mockResolvedValue({
       permissions,
       nextSkipToken: null,
@@ -172,7 +172,7 @@ describe('refresh-object', () => {
 
     const [result, { step }] = setup(setupData);
 
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toBeUndefined();
     expect(step.run).toBeCalledTimes(1);
 
     expect(getItemConnector.getItem).toBeCalledTimes(1);
@@ -219,7 +219,7 @@ describe('refresh-object', () => {
 
     const [result, { step }] = setup(setupData);
 
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toBeUndefined();
     expect(step.run).toBeCalledTimes(1);
 
     expect(getItemConnector.getItem).toBeCalledTimes(1);

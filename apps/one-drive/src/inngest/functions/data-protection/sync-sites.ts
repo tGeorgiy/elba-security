@@ -20,11 +20,11 @@ export const syncSites = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],

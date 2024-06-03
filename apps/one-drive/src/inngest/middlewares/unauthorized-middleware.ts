@@ -29,7 +29,7 @@ export const unauthorizedMiddleware = new InngestMiddleware({
             if (error instanceof MicrosoftError && error.response?.status === 401) {
               if (hasRequiredDataProperties(data)) {
                 await client.send({
-                  name: 'one-drive/app.uninstalled.requested',
+                  name: 'one-drive/app.uninstalled',
                   data: {
                     organisationId: data.organisationId,
                   },

@@ -19,11 +19,11 @@ export const refreshItem = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -64,33 +64,29 @@ export const refreshItem = inngest.createFunction(
         }),
       ]);
 
-      if (item === 'notFound' || !permissions.length) {
-        await elba.dataProtection.deleteObjects({
-          ids: [itemId],
+      if (item !== null && permissions.length) {
+        const dataProtectionItem = formatDataProtectionItems({
+          itemsWithPermisions: [
+            {
+              item,
+              permissions,
+            },
+          ],
+          siteId,
+          driveId,
         });
-        return;
+
+        if (dataProtectionItem.length) {
+          await elba.dataProtection.updateObjects({
+            objects: dataProtectionItem,
+          });
+          return;
+        }
       }
 
-      const dataProtectionItem = formatDataProtectionItems({
-        itemsWithPermisions: [
-          {
-            item,
-            permissions,
-          },
-        ],
-        siteId,
-        driveId,
-      });
-
-      if (!dataProtectionItem.length) return;
-
-      await elba.dataProtection.updateObjects({
-        objects: dataProtectionItem,
+      await elba.dataProtection.deleteObjects({
+        ids: [itemId],
       });
     });
-
-    return {
-      status: 'completed',
-    };
   }
 );

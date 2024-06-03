@@ -20,11 +20,12 @@ const sharePoints = Array.from({ length: 5 }, (_, i) => ({
   siteId: `site-id-${i}`,
   driveId: `drive-id-${i}`,
   subscriptionId: `subscription-id-${i}`,
+  subscriptionClientState: `some-random-client-state-${i}`,
   subscriptionExpirationDate: `2024-04-25 00:00:0${i}.000000`,
   delta: `delta-token-${i}`,
 }));
 
-const setup = createInngestFunctionMock(removeOrganisation, 'one-drive/app.uninstalled.requested');
+const setup = createInngestFunctionMock(removeOrganisation, 'one-drive/app.uninstalled');
 
 describe('remove-organisation', () => {
   test("should not remove given organisation when it's not registered", async () => {

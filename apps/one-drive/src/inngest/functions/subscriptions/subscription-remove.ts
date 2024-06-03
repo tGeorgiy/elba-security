@@ -3,18 +3,18 @@ import { NonRetriableError } from 'inngest';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable, sharePointTable } from '@/database/schema';
-import { removeSubscription } from '@/connectors/one-drive/subscription/remove-subscription';
+import { removeSubscription } from '@/connectors/one-drive/subscription/subscriptions';
 
 export const subscriptionRemove = inngest.createFunction(
   {
     id: 'one-drive-subscribe-remove',
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -52,9 +52,5 @@ export const subscriptionRemove = inngest.createFunction(
         organisationId,
       },
     });
-
-    return {
-      status: 'completed',
-    };
   }
 );

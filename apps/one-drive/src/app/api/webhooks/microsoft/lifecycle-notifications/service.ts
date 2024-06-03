@@ -2,9 +2,11 @@ import { inArray } from 'drizzle-orm';
 import { inngest } from '@/inngest/client';
 import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
-import type { MicrosoftSubscriptionEvent, SubscriptionRefresh } from './type';
+import type { SubscriptionRefresh } from './type';
 
-export const handleSubscriptionEvent = async (data: MicrosoftSubscriptionEvent[]) => {
+export const handleSubscriptionEvent = async (
+  data: { tenantId: string; subscriptionId: string }[]
+) => {
   if (!data.length) {
     return;
   }

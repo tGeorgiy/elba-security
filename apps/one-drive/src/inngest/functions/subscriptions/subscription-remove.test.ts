@@ -1,7 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as removeSubscriptionConnector from '@/connectors/one-drive/subscription/remove-subscription';
+import * as removeSubscriptionConnector from '@/connectors/one-drive/subscription/subscriptions';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
@@ -14,6 +14,7 @@ const driveId = 'some-drive-id';
 const subscriptionId = 'some-subscription-id';
 const tenantId = 'some-tenant-id';
 const deltaToken = 'some-delta-token';
+const clientState = 'some-client-state';
 
 const organisation = {
   id: organisationId,
@@ -28,6 +29,7 @@ const sharePoint = {
   driveId,
   subscriptionId,
   subscriptionExpirationDate: '2024-04-25 00:00:00.000000',
+  subscriptionClientState: clientState,
   delta: deltaToken,
 };
 
@@ -50,7 +52,12 @@ describe('subscription-remove', () => {
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
 
-        set: { subscriptionId: sharePoint.subscriptionId, delta: sharePoint.delta },
+        set: {
+          subscriptionId: sharePoint.subscriptionId,
+          subscriptionExpirationDate: sharePoint.subscriptionExpirationDate,
+          subscriptionClientState: sharePoint.subscriptionClientState,
+          delta: sharePoint.delta,
+        },
       });
   });
 
@@ -73,7 +80,7 @@ describe('subscription-remove', () => {
 
     const [result, { step }] = setup(setupData);
 
-    await expect(result).resolves.toStrictEqual({ status: 'completed' });
+    await expect(result).resolves.toBeUndefined();
 
     expect(removeSubscriptionConnector.removeSubscription).toBeCalledTimes(1);
     expect(removeSubscriptionConnector.removeSubscription).toBeCalledWith(

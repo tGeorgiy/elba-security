@@ -18,6 +18,7 @@ export const sharePointTable = pgTable(
     driveId: text('drive_id').notNull(),
     subscriptionId: text('subscription_id').notNull(),
     subscriptionExpirationDate: text('subscription_expiration_date').notNull(),
+    subscriptionClientState: text('subscription_client_state').notNull(),
     delta: text('delta').notNull(),
     createdAt: timestamp('created_at').defaultNow().notNull(),
   },

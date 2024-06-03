@@ -20,11 +20,11 @@ export const initializeDelta = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -75,6 +75,8 @@ export const initializeDelta = inngest.createFunction(
       };
     }
 
+    if (!newDeltaToken) throw new NonRetriableError('Delta token not found!');
+
     const data = await step.invoke('one-drive/drives.subscription.triggered', {
       function: subscriptionToDrive,
       data: {
@@ -93,13 +95,17 @@ export const initializeDelta = inngest.createFunction(
         driveId,
         subscriptionId: data.id,
         subscriptionExpirationDate: data.expirationDateTime,
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cant be null
-        delta: newDeltaToken!,
+        subscriptionClientState: data.clientState,
+        delta: newDeltaToken,
       })
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
-        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- cant be null
-        set: { subscriptionId: data.id, delta: newDeltaToken!, siteId },
+        set: {
+          subscriptionId: data.id,
+          subscriptionExpirationDate: data.expirationDateTime,
+          subscriptionClientState: data.clientState,
+          delta: newDeltaToken,
+        },
       });
 
     return {

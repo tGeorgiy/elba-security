@@ -4,8 +4,10 @@ import { db } from '@/database/client';
 import { organisationsTable } from '@/database/schema';
 import { inngest } from '@/inngest/client';
 import { decrypt } from '@/common/crypto';
-import { deleteItemPermission } from '@/connectors/one-drive/share-point/delete-item-permission';
 import { env } from '@/common/env';
+import { deleteItemPermission } from '@/connectors/one-drive/share-point/permissions';
+import { MicrosoftError } from '@/common/error';
+import { createElbaClient } from '@/connectors/elba/client';
 
 export const deleteDataProtectionItemPermissions = inngest.createFunction(
   {
@@ -16,11 +18,11 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     },
     cancelOn: [
       {
-        event: 'one-drive/app.uninstalled.requested',
+        event: 'one-drive/app.uninstalled',
         match: 'data.organisationId',
       },
       {
-        event: 'one-drive/app.install.requested',
+        event: 'one-drive/app.installed',
         match: 'data.organisationId',
       },
     ],
@@ -38,6 +40,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
     const [organisation] = await db
       .select({
         token: organisationsTable.token,
+        region: organisationsTable.region,
       })
       .from(organisationsTable)
       .where(eq(organisationsTable.id, organisationId));
@@ -50,7 +53,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
 
     const permissionDeletionResults = await Promise.allSettled(
       permissions.map((permissionId) =>
-        step.run('delete-item-permission', async () => {
+        step.run('delete-item-permissions', async () => {
           try {
             await deleteItemPermission({
               token,
@@ -61,30 +64,43 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
             });
 
             return { status: 204, permissionId };
-            /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- Start of error handling */
-          } catch (error: any) {
-            if (error.response.status === 404) return { status: 404, permissionId };
+          } catch (error) {
+            if (error instanceof MicrosoftError && error.response?.status === 404)
+              return { status: 404, permissionId };
 
             throw error;
           }
-          /* eslint-enable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-member-access -- End of error handling */
         })
       )
     );
 
-    return permissionDeletionResults.reduce<{
+    const parsedResult = permissionDeletionResults.reduce<{
       deletedPermissions: string[];
       notFoundPermissions: string[];
+      unexpectedFailedPermissions: string[];
     }>(
-      (acc, el) => {
+      (acc, el, index) => {
         if (el.status === 'fulfilled') {
           if (el.value.status === 204) acc.deletedPermissions.push(el.value.permissionId);
           if (el.value.status === 404) acc.notFoundPermissions.push(el.value.permissionId);
         }
+        if (el.status === 'rejected') {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- can't be undefined
+          acc.unexpectedFailedPermissions.push(permissions[index]!);
+        }
 
         return acc;
       },
-      { deletedPermissions: [], notFoundPermissions: [] }
+      { deletedPermissions: [], notFoundPermissions: [], unexpectedFailedPermissions: [] }
     );
+
+    if (parsedResult.notFoundPermissions.length) {
+      const elba = createElbaClient({ organisationId, region: organisation.region });
+      await elba.dataProtection.deleteObjects({
+        ids: [itemId],
+      });
+    }
+
+    return parsedResult;
   }
 );

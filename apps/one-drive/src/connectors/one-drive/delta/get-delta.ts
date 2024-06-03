@@ -36,6 +36,10 @@ const deltaSchema = z.object({
 
 export type Delta = z.infer<typeof deltaSchema>;
 
+// deltaToken appears only on last pagination page.
+// So I should fetch all previous pages and I should get the deltaToken, it should be there in all cases.
+// So if I have no skipToken, I should have deltaToken then.
+
 export const getDelta = async ({
   token,
   siteId,

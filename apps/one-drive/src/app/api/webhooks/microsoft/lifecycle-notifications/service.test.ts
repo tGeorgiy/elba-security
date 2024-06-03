@@ -25,12 +25,14 @@ const data: MicrosoftSubscriptionEvent[] = [
   {
     subscriptionId: 'subscription-id-0',
     lifecycleEvent: 'reauthorizationRequired',
-    tenantId: 'b783626c-d5f5-40a5-9490-90a947e22e42',
+    organizationId: 'b783626c-d5f5-40a5-9490-90a947e22e42',
+    clientState: 'some-state',
   },
   {
     subscriptionId: 'subscription-id-1',
     lifecycleEvent: 'reauthorizationRequired',
-    tenantId: 'b783626c-d5f5-40a5-9490-90a947e11e31',
+    organizationId: 'b783626c-d5f5-40a5-9490-90a947e11e31',
+    clientState: 'some-state',
   },
 ];
 
@@ -51,7 +53,9 @@ describe('handleWebhook', () => {
     // @ts-expect-error -- this is a mock
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
 
-    await expect(handleSubscriptionEvent(data)).resolves.toBeUndefined();
+    await expect(
+      handleSubscriptionEvent(data.map((v) => ({ ...v, tenantId: v.organizationId })))
+    ).resolves.toBeUndefined();
 
     expect(send).toBeCalledWith(
       subscriptionEvents.map((event) => ({

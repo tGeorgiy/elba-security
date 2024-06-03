@@ -11,18 +11,15 @@ export const removeInheritedSync = (
   parentPermissionIds: string[],
   itemsWithPermisions: ItemsWithPermisions[]
 ): ItemsWithPermisions[] => {
-  return itemsWithPermisions.reduce<ItemsWithPermisions[]>((acc, itemWithPermisions) => {
-    const filteredPermissions = itemWithPermisions.permissions.filter(
+  return itemsWithPermisions.map(({ item, permissions }) => {
+    const filteredPermissions = permissions.filter(
       (permission) => !parentPermissionIds.includes(permission.id)
     );
-
-    acc.push({
-      item: itemWithPermisions.item,
+    return {
+      item,
       permissions: filteredPermissions,
-    });
-
-    return acc;
-  }, []);
+    };
+  });
 };
 
 export const groupItems = (items: MicrosoftDriveItem[]) =>
@@ -174,9 +171,6 @@ export const getParentFolderPermissions = async (
   siteId: string,
   driveId: string
 ) => {
-  const parentFolderPermissions: string[] = [];
-  let parentFolderPaginated = false;
-
   if (folder?.id && !folder.paginated) {
     const { permissions } = await getAllItemPermissions({
       token,
@@ -184,18 +178,15 @@ export const getParentFolderPermissions = async (
       driveId,
       itemId: folder.id,
     });
-
-    global.repeats++;
-
-    parentFolderPaginated = true;
-    parentFolderPermissions.push(...permissions.map((el) => el.id));
-  } else if (folder?.permissions.length) {
-    parentFolderPermissions.push(...folder.permissions);
+    return {
+      parentFolderPaginated: true,
+      parentFolderPermissions: permissions.map(({ id }) => id),
+    };
   }
 
   return {
-    parentFolderPermissions,
-    parentFolderPaginated,
+    parentFolderPaginated: false,
+    parentFolderPermissions: folder?.permissions ?? [],
   };
 };
 

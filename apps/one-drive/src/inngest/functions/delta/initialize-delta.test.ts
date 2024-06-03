@@ -3,8 +3,8 @@ import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
 import { and, eq } from 'drizzle-orm';
 import * as deltaConnector from '@/connectors/one-drive/delta/get-delta';
-import * as createSubscriptionConnector from '@/connectors/one-drive/subscription/create-subcsription';
-import type { Subscription } from '@/connectors/one-drive/subscription/create-subcsription';
+import * as createSubscriptionConnector from '@/connectors/one-drive/subscription/subscriptions';
+import type { Subscription } from '@/connectors/one-drive/subscription/subscriptions';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
@@ -25,6 +25,7 @@ const organisation = {
 
 const subscriptionData: Subscription = {
   id: 'somesubscription-id',
+  clientState: 'some-random-client-state',
   expirationDateTime: '2023-10-24 14:40:00.000000+03',
 };
 
@@ -79,12 +80,22 @@ describe('sync-sites', () => {
     await expect(result).resolves.toStrictEqual({ status: 'ongoing' });
   });
 
-  test('should finalize the sync and insert/update data in db', async () => {
-    const nextSkipToken = null;
-
+  test('should throw NonRetriableError when no newDeltaToken and no skipToken', async () => {
     vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
       delta: [],
-      nextSkipToken,
+      nextSkipToken: null,
+      newDeltaToken: null,
+    });
+
+    const [result] = setup(setupData);
+
+    await expect(result).rejects.toBeInstanceOf(NonRetriableError);
+  });
+
+  test('should finalize the sync and insert/update data in db', async () => {
+    vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
+      delta: [],
+      nextSkipToken: null,
       newDeltaToken: deltaToken,
     });
     vi.spyOn(createSubscriptionConnector, 'createSubscription').mockResolvedValue(subscriptionData);

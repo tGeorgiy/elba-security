@@ -10,7 +10,6 @@ import { db } from '@/database/client';
 import type { Delta } from '@/connectors/one-drive/delta/get-delta';
 import { env } from '@/common/env';
 import type { MicrosoftDriveItemPermissions } from '@/connectors/one-drive/share-point/permissions';
-import { MicrosoftError } from '@/common/error';
 import { updateItems } from './update-items';
 import {
   formatDataProtectionItems,
@@ -27,6 +26,7 @@ const organisationId = '45a76301-f1dd-4a77-b12f-9d7d3fca3c92';
 const siteId = 'some-site-id';
 const driveId = 'some-drive-id';
 const subscriptionId = 'some-subscription-id';
+const clientState = 'random-client-state-string';
 const tenantId = 'some-tenant-id';
 const deltaToken = 'some-delta-token';
 
@@ -42,6 +42,7 @@ const sharePoint = {
   siteId,
   driveId,
   subscriptionId,
+  subscriptionClientState: clientState,
   subscriptionExpirationDate: '2024-04-25 00:00:00.000000',
   delta: deltaToken,
 };
@@ -122,7 +123,12 @@ describe('update-item-and-permissions', () => {
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
 
-        set: { subscriptionId: sharePoint.subscriptionId, delta: sharePoint.delta },
+        set: {
+          subscriptionId: sharePoint.subscriptionId,
+          subscriptionExpirationDate: sharePoint.subscriptionExpirationDate,
+          subscriptionClientState: sharePoint.subscriptionClientState,
+          delta: sharePoint.delta,
+        },
       });
   });
 
@@ -264,7 +270,7 @@ describe('update-item-and-permissions', () => {
     expect(record?.delta).toBe(newDeltaToken);
   });
 
-  test('should throw MicrosoftError when there is no next page and no Delta token', async () => {
+  test('should throw NonRetriableError when there is no next page and no Delta token', async () => {
     vi.spyOn(deltaConnector, 'getDelta').mockResolvedValue({
       delta: items,
       nextSkipToken: null,
@@ -273,7 +279,7 @@ describe('update-item-and-permissions', () => {
 
     const [result] = setup(setupData);
 
-    await expect(result).rejects.toBeInstanceOf(MicrosoftError);
+    await expect(result).rejects.toBeInstanceOf(NonRetriableError);
   });
 
   test('should continue the sync when there is a next page', async () => {

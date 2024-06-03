@@ -6,7 +6,7 @@ import { syncDrives } from './data-protection/sync-drives';
 import { syncItems } from './data-protection/sync-items';
 import { scheduleDataProtectionSyncJobs } from './data-protection/schedule-sync-sites';
 import { refreshItem } from './data-protection/refresh-item';
-import { deleteDataProtectionItemPermissions } from './data-protection/delete-item-permission';
+import { deleteDataProtectionItemPermissions } from './data-protection/delete-item-permissions';
 import { initializeDelta } from './delta/initialize-delta';
 import { updateItems } from './data-protection/update-items';
 import { subscriptionToDrive } from './subscriptions/subscription-to-drives';

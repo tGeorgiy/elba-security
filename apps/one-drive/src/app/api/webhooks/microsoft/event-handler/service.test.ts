@@ -9,11 +9,13 @@ const data: WebhookResponse<SubscriptionPayload> = {
       subscriptionId: 'subscription-id-0',
       resource: 'sites/siteId-0/drives/driveId-0/root',
       tenantId: 'b783626c-d5f5-40a5-9490-90a947e22e42',
+      clientState: 'some-state',
     },
     {
       subscriptionId: 'subscription-id-1',
       resource: 'sites/siteId-1/drives/driveId-1/root',
       tenantId: 'b783626c-d5f5-40a5-9490-90a947e11e31',
+      clientState: 'some-state',
     },
   ],
 };
@@ -24,11 +26,13 @@ const invalidData: WebhookResponse<SubscriptionPayload> = {
       subscriptionId: 'subscription-id-0',
       resource: 'sites/siteId-0/drives/driveId-0/root',
       tenantId: 'b783626c-d5f5-40a5-9490-90a947e22e42',
+      clientState: 'some-state',
     },
     {
       subscriptionId: 'subscription-id-1',
       resource: 'sites/siteId/root',
       tenantId: 'b783626c-d5f5-40a5-9490-90a947e11e31',
+      clientState: 'some-state',
     },
   ],
 };
@@ -38,7 +42,7 @@ describe('handleWebhook', () => {
     // @ts-expect-error -- this is a mock
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
 
-    await expect(handleWebhook(data)).resolves.toBeUndefined();
+    await expect(handleWebhook(data.value)).resolves.toBeUndefined();
 
     expect(send).toBeCalledWith(
       data.value.map((payload, index) => {
@@ -62,7 +66,7 @@ describe('handleWebhook', () => {
     // @ts-expect-error -- this is a mock
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
 
-    await expect(handleWebhook(invalidData)).resolves.toBeUndefined();
+    await expect(handleWebhook(invalidData.value)).resolves.toBeUndefined();
 
     expect(send).toBeCalledWith([
       {
@@ -85,7 +89,7 @@ describe('handleWebhook', () => {
     // @ts-expect-error -- this is a mock
     const send = vi.spyOn(inngest, 'send').mockResolvedValue(undefined);
 
-    await expect(handleWebhook({ value: [] })).resolves.toBeUndefined();
+    await expect(handleWebhook([])).resolves.toBeUndefined();
 
     expect(send).toBeCalledTimes(0);
   });

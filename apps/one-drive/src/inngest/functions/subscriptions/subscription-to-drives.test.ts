@@ -1,7 +1,7 @@
 import { expect, test, describe, vi, beforeEach } from 'vitest';
 import { createInngestFunctionMock } from '@elba-security/test-utils';
 import { NonRetriableError } from 'inngest';
-import * as createSubscriptionConnector from '@/connectors/one-drive/subscription/create-subcsription';
+import * as createSubscriptionConnector from '@/connectors/one-drive/subscription/subscriptions';
 import { organisationsTable, sharePointTable } from '@/database/schema';
 import { encrypt } from '@/common/crypto';
 import { db } from '@/database/client';
@@ -14,6 +14,7 @@ const driveId = 'some-drive-id';
 const subscriptionId = 'some-subscription-id';
 const tenantId = 'some-tenant-id';
 const deltaToken = 'some-delta-token';
+const clientState = 'some-client-state';
 
 const organisation = {
   id: organisationId,
@@ -27,6 +28,7 @@ const sharePoint = {
   siteId,
   driveId,
   subscriptionId,
+  subscriptionClientState: clientState,
   subscriptionExpirationDate: '2024-04-25 00:00:00.000000',
   delta: deltaToken,
 };
@@ -40,6 +42,7 @@ const setupData = {
 
 const subscription = {
   id: subscriptionId,
+  clientState,
   expirationDateTime: sharePoint.subscriptionExpirationDate,
 };
 
@@ -57,7 +60,12 @@ describe('drive-subscribe', () => {
       .onConflictDoUpdate({
         target: [sharePointTable.organisationId, sharePointTable.driveId],
 
-        set: { subscriptionId: sharePoint.subscriptionId, delta: sharePoint.delta },
+        set: {
+          subscriptionId: sharePoint.subscriptionId,
+          subscriptionExpirationDate: sharePoint.subscriptionExpirationDate,
+          subscriptionClientState: sharePoint.subscriptionClientState,
+          delta: sharePoint.delta,
+        },
       });
   });
 
@@ -85,10 +93,12 @@ describe('drive-subscribe', () => {
     await expect(result).resolves.toStrictEqual(subscription);
 
     expect(createSubscriptionConnector.createSubscription).toBeCalledTimes(1);
-    expect(createSubscriptionConnector.createSubscription).toBeCalledWith({
-      token,
-      changeType,
-      resource,
-    });
+    expect(createSubscriptionConnector.createSubscription).toBeCalledWith(
+      expect.objectContaining({
+        token,
+        changeType,
+        resource,
+      })
+    );
   });
 });
