@@ -2,11 +2,17 @@ import type { DataProtectionObject, DataProtectionObjectPermission } from '@elba
 import { z } from 'zod';
 import type { MicrosoftDriveItem } from '@/connectors/microsoft/sharepoint/items';
 import {
+  deleteItemPermission,
   getAllItemPermissions,
+  revokeUserFromLinkPermission,
   type MicrosoftDriveItemPermission,
 } from '@/connectors/microsoft/sharepoint/permissions';
 import type { Delta } from '@/connectors/microsoft/delta/get-delta';
+import { MicrosoftError } from '@/common/error';
 import type {
+  CombinedLinkPermissions,
+  CombinedPermission,
+  DeleteItemFunctionParams,
   Folder,
   ItemsWithPermissions,
   ItemsWithPermissionsParsed,
@@ -56,39 +62,75 @@ export const getChunkedArray = <T>(array: T[], batchSize: number): T[][] => {
   return chunks;
 };
 
-export const formatPermissions = (
-  permission: MicrosoftDriveItemPermission
-): DataProtectionObjectPermission | null => {
-  if (permission.grantedToV2?.user) {
-    return {
-      id: permission.id,
-      type: 'user',
-      displayName: permission.grantedToV2.user.displayName,
-      userId: permission.grantedToV2.user.id,
-      email: permission.grantedToV2.user.email,
-    };
-  } else if (permission.link?.scope === 'anonymous') {
-    return {
-      id: permission.id,
-      type: 'anyone',
-      metadata: {
-        sharedLinks: [permission.link.webUrl],
-      },
-    };
-  }
+export const combinePermisisons = (
+  itemId: string,
+  permissions: MicrosoftDriveItemPermission[]
+): DataProtectionObjectPermission[] => {
+  const combinedArray: CombinedPermission[] = [];
 
-  // TODO: This part is for link access when we create a link for people that we choose, will be updated in next iterations
-  // else if (permission.link?.scope === 'users') {
-  //   return permission.grantedToIdentitiesV2
-  //     .filter(({ user }) => user) // Need to check, maybe we can remove this, because user always should be after validation in connector
-  //     .map(({ user }) => ({
-  //       id: `${permission.id}-SEPARATOR-${user?.id}`,
-  //       type: 'user',
-  //       displayName: user?.displayName,
-  //       userId: user?.id,
-  //     })) as DataProtectionObjectPermission[];
-  // }
-  return null;
+  permissions.forEach((permission) => {
+    if (permission.grantedToV2?.user) {
+      const elbaPermissionId = `item-${itemId}-user-${permission.grantedToV2.user.id}`;
+      const index = combinedArray.findIndex((el) => el.id === elbaPermissionId);
+
+      if (index < 0) {
+        combinedArray.push({
+          id: elbaPermissionId,
+          type: 'user',
+          email: permission.grantedToV2.user.email,
+          metadata: {
+            directPermissionId: permission.id,
+            email: permission.grantedToV2.user.email,
+          },
+        });
+      } else {
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- will be there
+        const combinedItem = combinedArray[index]!;
+        if (combinedItem.type === 'user') {
+          combinedItem.metadata.directPermissionId = permission.id;
+        }
+      }
+    }
+
+    if (permission.link?.scope === 'anonymous') {
+      combinedArray.push({
+        id: permission.id,
+        type: 'anyone',
+      });
+    }
+
+    if (permission.link?.scope === 'users' && permission.grantedToIdentitiesV2?.length) {
+      permission.grantedToIdentitiesV2.forEach((identity) => {
+        const elbaPermissionId = `item-${itemId}-user-${identity?.user?.id}`;
+        const index = combinedArray.findIndex((el) => el.id === elbaPermissionId);
+        const email = identity?.user?.email;
+
+        if (!email) return;
+
+        if (index < 0) {
+          combinedArray.push({
+            id: elbaPermissionId,
+            type: 'user',
+            email,
+            metadata: {
+              email,
+              linksPermissionIds: [permission.id],
+            },
+          });
+        }
+
+        if (index >= 0) {
+          // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- will be there
+          const combinedItem = combinedArray[index]!;
+          if (combinedItem.type === 'user' && combinedItem.metadata.linksPermissionIds) {
+            combinedItem.metadata.linksPermissionIds.push(permission.id);
+          }
+        }
+      });
+    }
+  });
+
+  return combinedArray as unknown as DataProtectionObjectPermission[];
 };
 
 export const getItemsWithPermissionsFromChunks = async ({
@@ -148,7 +190,7 @@ export const formatDataProtectionItems = ({
     if (item.createdBy.user.id) {
       const validPermissions: MicrosoftDriveItemPermission[] = permissions.filter(
         (permission) =>
-          permission.link?.scope === 'users' ||
+          (permission.link?.scope === 'users' && permission.grantedToIdentitiesV2?.length) ||
           permission.link?.scope === 'anonymous' ||
           permission.grantedToV2?.user
       );
@@ -164,11 +206,9 @@ export const formatDataProtectionItems = ({
             driveId,
           } satisfies ItemMetadata,
           updatedAt: item.lastModifiedDateTime,
-          permissions: validPermissions
-            .map(formatPermissions)
-            .filter((permission): permission is DataProtectionObjectPermission =>
-              Boolean(permission)
-            ),
+          permissions: combinePermisisons(item.id, validPermissions).filter(
+            (permission): permission is DataProtectionObjectPermission => Boolean(permission)
+          ),
         };
 
         dataProtection.push(dataProtectionItem);
@@ -246,4 +286,103 @@ export const removeInheritedUpdate = (
     },
     { toDelete: [], toUpdate: [] }
   );
+};
+
+export const createDeleteItemPermissionFunction = ({
+  token,
+  siteId,
+  driveId,
+  itemId,
+  permissionId,
+  userEmails,
+}: DeleteItemFunctionParams) => {
+  return async () => {
+    try {
+      if (userEmails?.length)
+        await revokeUserFromLinkPermission({
+          token,
+          siteId,
+          driveId,
+          itemId,
+          permissionId,
+          userEmails,
+        });
+      else
+        await deleteItemPermission({
+          token,
+          siteId,
+          driveId,
+          itemId,
+          permissionId,
+        });
+
+      return {
+        status: 204,
+        permissionId,
+        userEmails,
+      };
+    } catch (error) {
+      if (error instanceof MicrosoftError && error.response?.status === 404) {
+        return {
+          status: 404,
+          permissionId,
+          userEmails,
+        };
+      }
+      throw error;
+    }
+  };
+};
+
+export const preparePermissionDeletionArray = (permissions: CombinedPermission[]) => {
+  const permissionDeletionArray: CombinedLinkPermissions[] = [];
+  const combinedLinkPermissions: CombinedLinkPermissions[] = [];
+
+  for (const permission of permissions) {
+    if (permission.type === 'user' && permission.metadata.directPermissionId) {
+      const permissionId = permission.metadata.directPermissionId;
+
+      permissionDeletionArray.push({
+        permissionId,
+      });
+    }
+
+    if (permission.type === 'anyone') {
+      permissionDeletionArray.push({
+        permissionId: permission.id,
+      });
+    }
+
+    if (permission.type === 'user' && permission.metadata.linksPermissionIds?.length) {
+      permission.metadata.linksPermissionIds.forEach((permissionId) => {
+        const combinedLinkPermission = combinedLinkPermissions.find(
+          (el) => el.permissionId === permissionId
+        );
+
+        if (combinedLinkPermission?.userEmails?.length) {
+          combinedLinkPermission.userEmails.push(permission.metadata.email);
+        } else {
+          combinedLinkPermissions.push({
+            permissionId,
+            userEmails: [permission.metadata.email],
+          });
+        }
+      });
+    }
+  }
+
+  if (combinedLinkPermissions.length) {
+    combinedLinkPermissions.forEach((permission) => {
+      const emailChunks = getChunkedArray<string>(permission.userEmails || [], 200);
+
+      for (const emailChunk of emailChunks) {
+        permissionDeletionArray.push({
+          permissionId: permission.permissionId,
+          userEmails: emailChunk,
+        });
+      }
+    });
+  }
+
+  return permissionDeletionArray;
 };

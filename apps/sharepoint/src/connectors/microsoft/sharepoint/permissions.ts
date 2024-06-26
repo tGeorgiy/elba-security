@@ -103,6 +103,10 @@ type DeleteItemPermissionParams = GetPermissionsParams & {
   permissionId: string;
 };
 
+type RevokeUserFromLinkPermissionParams = DeleteItemPermissionParams & {
+  userEmails: string[];
+};
+
 export type MicrosoftDriveItemPermission = z.infer<typeof basePSchema>;
 
 export const getAllItemPermissions = async ({
@@ -196,5 +200,33 @@ export const deleteItemPermission = async ({
 
   if (!response.ok) {
     throw new MicrosoftError('Could not delete permission', { response });
+  }
+};
+
+export const revokeUserFromLinkPermission = async ({
+  token,
+  siteId,
+  driveId,
+  itemId,
+  permissionId,
+  userEmails,
+}: RevokeUserFromLinkPermissionParams): Promise<void> => {
+  const url = new URL(
+    `https://graph.microsoft.com/beta/sites/${siteId}/drives/${driveId}/items/${itemId}/permissions/${permissionId}/revokeGrants`
+  );
+
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      grantees: userEmails.map((email) => ({ email })),
+    }),
+  });
+
+  if (!response.ok) {
+    throw new MicrosoftError('Could not revoke permission', { response });
   }
 };
