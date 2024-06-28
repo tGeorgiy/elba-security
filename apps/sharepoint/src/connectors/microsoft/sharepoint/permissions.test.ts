@@ -18,12 +18,14 @@ const driveId = 'some-drive-id';
 const itemId = 'some-item-id';
 const permissionId = 'permission-id';
 
-const granteeSchema = z.object({
-  email: z.string().email(),
-});
-
 const dataSchema = z.object({
-  grantees: z.array(granteeSchema).min(1),
+  grantees: z
+    .array(
+      z.object({
+        email: z.string(),
+      })
+    )
+    .min(1),
 });
 
 const permissions: MicrosoftDriveItemPermission[] = Array.from({ length: 5 }, (_, i) => ({

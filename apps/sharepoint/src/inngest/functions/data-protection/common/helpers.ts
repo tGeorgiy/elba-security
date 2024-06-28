@@ -66,15 +66,14 @@ export const combinePermisisons = (
   itemId: string,
   permissions: MicrosoftDriveItemPermission[]
 ): DataProtectionObjectPermission[] => {
-  const combinedArray: CombinedPermission[] = [];
+  const combinedPermissions = new Map<string, CombinedPermission>();
 
   permissions.forEach((permission) => {
     if (permission.grantedToV2?.user) {
       const elbaPermissionId = `item-${itemId}-user-${permission.grantedToV2.user.id}`;
-      const index = combinedArray.findIndex((el) => el.id === elbaPermissionId);
 
-      if (index < 0) {
-        combinedArray.push({
+      if (!combinedPermissions.has(elbaPermissionId)) {
+        combinedPermissions.set(elbaPermissionId, {
           id: elbaPermissionId,
           type: 'user',
           email: permission.grantedToV2.user.email,
@@ -85,7 +84,7 @@ export const combinePermisisons = (
         });
       } else {
         // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- will be there
-        const combinedItem = combinedArray[index]!;
+        const combinedItem = combinedPermissions.get(elbaPermissionId)!;
         if (combinedItem.type === 'user') {
           combinedItem.metadata.directPermissionId = permission.id;
         }
@@ -93,7 +92,7 @@ export const combinePermisisons = (
     }
 
     if (permission.link?.scope === 'anonymous') {
-      combinedArray.push({
+      combinedPermissions.set(permission.id, {
         id: permission.id,
         type: 'anyone',
       });
@@ -102,13 +101,12 @@ export const combinePermisisons = (
     if (permission.link?.scope === 'users' && permission.grantedToIdentitiesV2?.length) {
       permission.grantedToIdentitiesV2.forEach((identity) => {
         const elbaPermissionId = `item-${itemId}-user-${identity?.user?.id}`;
-        const index = combinedArray.findIndex((el) => el.id === elbaPermissionId);
         const email = identity?.user?.email;
 
         if (!email) return;
 
-        if (index < 0) {
-          combinedArray.push({
+        if (!combinedPermissions.has(elbaPermissionId)) {
+          combinedPermissions.set(elbaPermissionId, {
             id: elbaPermissionId,
             type: 'user',
             email,
@@ -117,11 +115,9 @@ export const combinePermisisons = (
               linksPermissionIds: [permission.id],
             },
           });
-        }
-
-        if (index >= 0) {
+        } else {
           // eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- will be there
-          const combinedItem = combinedArray[index]!;
+          const combinedItem = combinedPermissions.get(elbaPermissionId)!;
           if (combinedItem.type === 'user' && combinedItem.metadata.linksPermissionIds) {
             combinedItem.metadata.linksPermissionIds.push(permission.id);
           }
@@ -130,7 +126,7 @@ export const combinePermisisons = (
     }
   });
 
-  return combinedArray as unknown as DataProtectionObjectPermission[];
+  return Array.from(combinedPermissions.values());
 };
 
 export const getItemsWithPermissionsFromChunks = async ({
@@ -206,9 +202,7 @@ export const formatDataProtectionItems = ({
             driveId,
           } satisfies ItemMetadata,
           updatedAt: item.lastModifiedDateTime,
-          permissions: combinePermisisons(item.id, validPermissions).filter(
-            (permission): permission is DataProtectionObjectPermission => Boolean(permission)
-          ),
+          permissions: combinePermisisons(item.id, validPermissions),
         };
 
         dataProtection.push(dataProtectionItem);
@@ -336,14 +330,12 @@ export const createDeleteItemPermissionFunction = ({
 
 export const preparePermissionDeletionArray = (permissions: CombinedPermission[]) => {
   const permissionDeletionArray: CombinedLinkPermissions[] = [];
-  const combinedLinkPermissions: CombinedLinkPermissions[] = [];
+  const combinedLinkPermissions = new Map<string, string[]>();
 
   for (const permission of permissions) {
     if (permission.type === 'user' && permission.metadata.directPermissionId) {
-      const permissionId = permission.metadata.directPermissionId;
-
       permissionDeletionArray.push({
-        permissionId,
+        permissionId: permission.metadata.directPermissionId,
       });
     }
 
@@ -354,34 +346,24 @@ export const preparePermissionDeletionArray = (permissions: CombinedPermission[]
     }
 
     if (permission.type === 'user' && permission.metadata.linksPermissionIds?.length) {
-      permission.metadata.linksPermissionIds.forEach((permissionId) => {
-        const combinedLinkPermission = combinedLinkPermissions.find(
-          (el) => el.permissionId === permissionId
-        );
-
-        if (combinedLinkPermission?.userEmails?.length) {
-          combinedLinkPermission.userEmails.push(permission.metadata.email);
+      for (const permissionId of permission.metadata.linksPermissionIds) {
+        if (combinedLinkPermissions.has(permissionId)) {
+          combinedLinkPermissions.get(permissionId)?.push(permission.metadata.email);
         } else {
-          combinedLinkPermissions.push({
-            permissionId,
-            userEmails: [permission.metadata.email],
-          });
+          combinedLinkPermissions.set(permissionId, [permission.metadata.email]);
         }
-      });
+      }
     }
   }
 
-  if (combinedLinkPermissions.length) {
-    combinedLinkPermissions.forEach((permission) => {
-      const emailChunks = getChunkedArray<string>(permission.userEmails || [], 200);
-
-      for (const emailChunk of emailChunks) {
-        permissionDeletionArray.push({
-          permissionId: permission.permissionId,
-          userEmails: emailChunk,
-        });
-      }
-    });
+  for (const [permissionId, userEmails] of combinedLinkPermissions) {
+    const emailChunks = getChunkedArray<string>(userEmails, 200);
+    for (const emailChunk of emailChunks) {
+      permissionDeletionArray.push({
+        permissionId,
+        userEmails: emailChunk,
+      });
+    }
   }
 
   return permissionDeletionArray;
