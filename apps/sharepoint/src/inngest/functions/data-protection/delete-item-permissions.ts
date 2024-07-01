@@ -28,7 +28,7 @@ export const deleteDataProtectionItemPermissions = inngest.createFunction(
         match: 'data.organisationId',
       },
     ],
-    retries: 2,
+    retries: 5,
   },
   { event: 'sharepoint/data_protection.delete_object_permissions.requested' },
   async ({ event, step }) => {

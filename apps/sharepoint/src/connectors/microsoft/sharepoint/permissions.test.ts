@@ -407,4 +407,113 @@ describe('permissions connector', () => {
       ).rejects.toBeInstanceOf(MicrosoftError);
     });
   });
+
+  describe('getPermissionDetails', () => {
+    // mock token API endpoint using msw
+    beforeEach(() => {
+      server.use(
+        http.get(
+          `${env.MICROSOFT_API_URL}/sites/:siteId/drives/:driveId/items/:itemId/permissions/:permissionId`,
+          ({ request, params }) => {
+            if (
+              request.headers.get('Authorization') !== `Bearer ${validToken}` ||
+              params.siteId !== siteId ||
+              params.driveId !== driveId ||
+              params.permissionId !== permissionId
+            ) {
+              return new Response(undefined, { status: 401 });
+            } else if (params.itemId !== itemId) {
+              return new Response(undefined, { status: 404 });
+            }
+
+            return Response.json({ ...permissions[0] });
+          }
+        )
+      );
+    });
+
+    test('should resolves when the token and data is valid', () => {
+      expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId,
+          driveId,
+          itemId,
+          permissionId,
+        })
+      ).resolves;
+    });
+
+    test('should throws when the token is invalid', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: 'invalid-token',
+          siteId,
+          driveId,
+          itemId,
+          permissionId,
+        })
+      ).rejects.toBeInstanceOf(MicrosoftError);
+    });
+
+    test('should throws when the siteId is invalid', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId: 'invalid-siteId',
+          driveId,
+          itemId,
+          permissionId,
+        })
+      ).rejects.toBeInstanceOf(MicrosoftError);
+    });
+
+    test('should throws when the driveId is invalid', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId,
+          driveId: 'invalid-driveId',
+          itemId,
+          permissionId,
+        })
+      ).rejects.toBeInstanceOf(MicrosoftError);
+    });
+
+    test('should throws when the itemId is invalid', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId,
+          driveId,
+          itemId: 'invalid-itemId',
+          permissionId,
+        })
+      ).rejects.toBeInstanceOf(MicrosoftError);
+    });
+
+    test('should throws when the permissionId is invalid', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId,
+          driveId,
+          itemId,
+          permissionId: 'invalid-permission-id',
+        })
+      ).rejects.toBeInstanceOf(MicrosoftError);
+    });
+
+    test('should ', async () => {
+      await expect(
+        getPermissionsConnector.getPermissionDetails({
+          token: validToken,
+          siteId,
+          driveId,
+          itemId,
+          permissionId,
+        })
+      ).resolves.toStrictEqual({ ...permissions[0] });
+    });
+  });
 });
